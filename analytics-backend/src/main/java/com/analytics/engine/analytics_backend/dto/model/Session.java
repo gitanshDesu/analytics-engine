@@ -12,6 +12,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * Represents a single browsing session of a Visitor.
+ *
+ * <p>A Session begins when a visitor first accesses a tracked website and
+ * ends after a period of inactivity or when the browser session ends.
+ * Multiple Events are associated with a single Session.</p>
+ */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

@@ -11,6 +11,17 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * Represents a page that belongs to a Tracking Property.
+ *
+ * <p>A Page stores metadata about a trackable page within a website or
+ * application. It is used to categorize analytics events and provide
+ * contextual information such as the page's path, title and type.
+ *
+ * <p>Each Page belongs to exactly one Tracking Property and can have
+ * multiple Events associated with it throughout its lifetime.</p>
+ */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

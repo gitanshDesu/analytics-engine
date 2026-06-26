@@ -12,6 +12,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Represents a registered user of the Analytics Platform.
+ *
+ * <p>A User owns one or more Tracking Properties that are used to monitor
+ * websites or applications. User documents are persisted in the
+ * {@code users} MongoDB collection.</p>
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

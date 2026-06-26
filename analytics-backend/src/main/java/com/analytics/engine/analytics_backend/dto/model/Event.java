@@ -13,6 +13,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.Map;
 
+/**
+ * Represents a single user interaction recorded by the Analytics Engine.
+ *
+ * <p>Events are generated during a Session and capture actions such as
+ * page views, button clicks, link clicks, scrolling and form submissions.</p>
+ */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

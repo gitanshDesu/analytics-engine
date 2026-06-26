@@ -12,6 +12,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * Represents a unique browser/device interacting with a Tracking Property.
+ *
+ * <p>A Visitor may have multiple Sessions over time and is identified
+ * using a persistent visitor identifier stored in a browser cookie.</p>
+ */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

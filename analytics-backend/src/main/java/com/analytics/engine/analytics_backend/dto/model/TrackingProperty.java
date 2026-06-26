@@ -12,6 +12,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Represents a website or application monitored by the Analytics Engine.
+ *
+ * <p>A Tracking Property belongs to exactly one User and contains the
+ * configuration required to accept analytics events from one or more
+ * allowed domains.</p>
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
