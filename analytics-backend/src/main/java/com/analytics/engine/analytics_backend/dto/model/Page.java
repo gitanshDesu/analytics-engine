@@ -1,5 +1,6 @@
 package com.analytics.engine.analytics_backend.dto.model;
 
+import com.analytics.engine.analytics_backend.dto.enums.PageType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +20,7 @@ public class Page {
     private String id;
     private String trackingId;
     private String pagePath;
-    private String pageType;
+    private PageType pageType;
 
     @CreatedDate
     private Instant createdAt;

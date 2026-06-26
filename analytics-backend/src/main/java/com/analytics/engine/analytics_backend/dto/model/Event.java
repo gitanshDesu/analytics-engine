@@ -1,6 +1,7 @@
 package com.analytics.engine.analytics_backend.dto.model;
 
 import com.analytics.engine.analytics_backend.dto.enums.EventType;
+import com.analytics.engine.analytics_backend.dto.enums.PageType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,5 +35,5 @@ public class Event {
     @CreatedDate
     private Instant createdAt;
     private String pageTitle;
-    private String pageType;
+    private PageType pageType;
 }
