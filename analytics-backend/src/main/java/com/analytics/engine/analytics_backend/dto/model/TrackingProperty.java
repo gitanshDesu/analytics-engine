@@ -23,6 +23,7 @@ public class TrackingProperty {
     @Indexed(unique = true)
     private String trackingId;
     private List<String> pageIds;
+    private String userId;
     @CreatedDate
     private Instant createdAt;
     @LastModifiedDate
