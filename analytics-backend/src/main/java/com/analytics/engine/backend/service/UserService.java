@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend.service;
+package com.analytics.engine.backend.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

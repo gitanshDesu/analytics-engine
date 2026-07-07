@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend.controller;
+package com.analytics.engine.backend.controller;
 
 import org.springframework.web.bind.annotation.RestController;
 

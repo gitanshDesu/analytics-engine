@@ -1,6 +1,7 @@
-package com.analytics.engine.analytics_backend.dto.model;
+package com.analytics.engine.backend.model;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -10,33 +11,32 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.List;
 
 /**
- * Represents a registered user of the Analytics Platform.
+ * Represents a unique browser/device interacting with a Tracking Property.
  *
- * <p>A User owns one or more Tracking Properties that are used to monitor
- * websites or applications. User documents are persisted in the
- * {@code users} MongoDB collection.</p>
+ * <p>A Visitor may have multiple Sessions over time and is identified
+ * using a persistent visitor identifier stored in a browser cookie.</p>
  */
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "users")
-public class User {
+@NoArgsConstructor
+@Builder
+@Document(collection = "visitors")
+public class Visitor {
     @Id
     private String id;
     @Indexed(unique = true)
-    private String email;
-    private String fullName;
-    private String password;
-    private String refreshToken;
-    private List<String> trackingPropertyIds;
+    private String visitorId;
+    private Instant firstSeen;
+    private Instant lastSeen;
+    @Builder.Default
+    private Long totalSessions = 0L;
     @CreatedDate
     private Instant createdAt;
-
     @LastModifiedDate
     private Instant updatedAt;
+
 
 }

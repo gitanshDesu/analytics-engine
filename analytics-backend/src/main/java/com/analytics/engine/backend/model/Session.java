@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend.dto.model;
+package com.analytics.engine.backend.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +34,9 @@ public class Session {
     private String visitorId;
     @Indexed
     private String trackingPropertyId;
+    private Instant startedAt;
     private Instant endedAt;
+    private Instant lastActivityAt;
     private String landingPage;
     private String exitPage;
     @Builder.Default

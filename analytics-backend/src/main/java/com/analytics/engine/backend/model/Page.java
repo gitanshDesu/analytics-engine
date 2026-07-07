@@ -1,6 +1,6 @@
-package com.analytics.engine.analytics_backend.dto.model;
+package com.analytics.engine.backend.model;
 
-import com.analytics.engine.analytics_backend.dto.enums.PageType;
+import com.analytics.engine.backend.enums.PageType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

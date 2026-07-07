@@ -1,6 +1,6 @@
-package com.analytics.engine.analytics_backend.repo;
+package com.analytics.engine.backend.repo;
 
-import com.analytics.engine.analytics_backend.dto.model.Page;
+import com.analytics.engine.backend.model.Page;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface PageRepo extends MongoRepository<Page,String> {

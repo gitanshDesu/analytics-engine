@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend;
+package com.analytics.engine.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

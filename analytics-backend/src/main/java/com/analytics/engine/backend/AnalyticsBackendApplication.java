@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend;
+package com.analytics.engine.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

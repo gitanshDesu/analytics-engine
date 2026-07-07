@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend.dto.enums;
+package com.analytics.engine.backend.enums;
 /**
  * Categorizes the different types of pages that can be tracked
  * by the Analytics Engine.

@@ -1,4 +1,4 @@
-package com.analytics.engine.analytics_backend.dto.model;
+package com.analytics.engine.backend.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,27 +13,29 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Represents a website or application monitored by the Analytics Engine.
+ * Represents a registered user of the Analytics Platform.
  *
- * <p>A Tracking Property belongs to exactly one User and contains the
- * configuration required to accept analytics events from one or more
- * allowed domains.</p>
+ * <p>A User owns one or more Tracking Properties that are used to monitor
+ * websites or applications. User documents are persisted in the
+ * {@code users} MongoDB collection.</p>
  */
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document
-public class TrackingProperty {
+@Document(collection = "users")
+public class User {
     @Id
     private String id;
-    private List<String> domains;
     @Indexed(unique = true)
-    private String trackingId;
-    private List<String> pageIds;
-    private String userId;
+    private String email;
+    private String fullName;
+    private String password;
+    private String refreshToken;
+    private List<String> trackingPropertyIds;
     @CreatedDate
     private Instant createdAt;
+
     @LastModifiedDate
     private Instant updatedAt;
 
