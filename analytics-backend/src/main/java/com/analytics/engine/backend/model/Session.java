@@ -56,7 +56,7 @@ public class Session {
     @Builder.Default
     private Integer eventCount = 0;
     @CreatedDate
-    private String createdAt;
+    private Instant createdAt;
     @LastModifiedDate
-    private String updatedAt;
+    private Instant updatedAt;
 }

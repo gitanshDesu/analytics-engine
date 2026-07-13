@@ -27,7 +27,7 @@ import java.util.List;
 public class TrackingProperty {
     @Id
     private String id;
-    private List<String> domains;
+    private List<String> domains; //allowlist of domains (from which we entertain tracking request coming from sdk)
     @Indexed(unique = true)
     private String trackingId;
     private List<String> pageIds;

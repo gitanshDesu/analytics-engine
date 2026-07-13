@@ -46,6 +46,7 @@ public class AuthService {
 
     public User login(GenericUserRequest payload){
         //Todo: Add jwt logic (store user id and email in cookie)
+        //Todo: Add password verify logic as well (if email exists then verify password from DB)f
         return userRepo.findByEmail(payload.getEmail()).orElseThrow(()->new UserNotFoundException("User Doesn't Exist!"));
 
     }
