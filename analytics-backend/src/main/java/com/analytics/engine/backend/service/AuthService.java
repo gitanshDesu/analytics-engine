@@ -1,9 +1,12 @@
 package com.analytics.engine.backend.service;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.analytics.engine.backend.dto.requests.CreateUserRequest;
+import com.analytics.engine.backend.dto.requests.GenericUserRequest;
+import com.analytics.engine.backend.exception.UserNotFoundException;
+import com.analytics.engine.backend.model.User;
+import com.analytics.engine.backend.repo.UserRepo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,8 +28,28 @@ import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class AuthService {
+
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private UserRepo userRepo;
+
+    public User register(CreateUserRequest payload){
+        //create User
+        User newUser = userService.createUser(payload);
+
+        //Todo: Add jwt logic (store user id and email in cookie)
+
+        return newUser;
+    }
+
+    public User login(GenericUserRequest payload){
+        //Todo: Add jwt logic (store user id and email in cookie)
+        return userRepo.findByEmail(payload.getEmail()).orElseThrow(()->new UserNotFoundException("User Doesn't Exist!"));
+
+    }
+
+
+
 }

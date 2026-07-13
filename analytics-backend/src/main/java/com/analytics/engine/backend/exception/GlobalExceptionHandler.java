@@ -28,6 +28,19 @@ public class GlobalExceptionHandler {
 
     }
 
+    //catch user not found errors (for an email or id) throws 404
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex, HttpServletRequest request){
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(buildErrorResponse(
+                        HttpStatus.NOT_FOUND,
+                        ex.getMessage(),
+                        request,
+                        null
+                ));
+    }
+
     //catch Input Validation errors (400 Bad Request)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request){

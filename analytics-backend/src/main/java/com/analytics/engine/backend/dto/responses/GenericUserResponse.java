@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserResponse {
+public class GenericUserResponse {
     private String email;
     private String fullName;
 }
