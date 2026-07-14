@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — "Deep Indigo & Chartreuse".
+ * Dark is the primary identity (:root); light is a progressive-enhancement
+ * override for users whose system prefers it. Keep raw values here and
+ * expose them to Tailwind as utilities via `@theme inline` below.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0f1220;
+  --surface: #171b2e;
+  --surface-hover: #1d2238;
+  --border: #2a3050;
+  --border-strong: #3a4068;
+
+  --ink: #edeef5;
+  --muted: #9498b5;
+  --subtle: #6c7094;
+
+  --accent: #a8d94a;
+  --accent-hover: #b8e667;
+  --accent-ink: #12142b;
+
+  /* Chart marks are validated separately from --accent (dataviz skill's six
+     checks): --accent's L≈0.82 is fine for a filled button with dark text on
+     top, but fails the OKLCH lightness band for a thin line/bar mark on a
+     dark surface. --chart-1/--chart-2 pass lightness, chroma, CVD-separation
+     (ΔE ~115 deutan) and contrast in both modes against these surfaces —
+     see `node scripts/validate_palette.js "#6b8c28,#6c7bff" --mode dark`. */
+  --chart-1: #6b8c28;
+  --chart-2: #6c7bff;
+
+  --success: #6fcf97;
+  --warning: #f2c14e;
+  --danger: #ef6461;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.24);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #f5f6fb;
+    --surface: #ffffff;
+    --surface-hover: #f0f1f8;
+    --border: #e1e3f0;
+    --border-strong: #c7cadf;
+
+    --ink: #12142b;
+    --muted: #5c5f7a;
+    --subtle: #8386a3;
+
+    /* Bright chartreuse reads poorly as text/icon color on white, so the
+       accent stays reserved for filled backgrounds and chart marks; anything
+       needing accent-colored text/icons in light mode should use accent-ink
+       or a semantic color instead. */
+    --accent: #a8d94a;
+    --accent-hover: #97c93e;
+    --accent-ink: #12142b;
+
+    /* Same chart-mark pair passes validation unchanged in light mode too
+       (both surfaces checked), so no separate light override is needed. */
+    --chart-1: #6b8c28;
+    --chart-2: #6c7bff;
+
+    --success: #2f9e63;
+    --warning: #b8860a;
+    --danger: #d1453d;
+
+    --shadow-card: 0 1px 2px rgb(15 18 32 / 0.06);
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+* {
+  border-color: var(--border);
 }
