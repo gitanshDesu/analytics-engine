@@ -21,7 +21,8 @@ public class SessionService {
     private VisitorService visitorService;
 
     public Session createSession(SessionStartRequest payload, HttpServletRequest httpRequest){
-        //Todo: verify that trackingPropertyId belongs to the userId in cookie (protected route)
+        // TODO: Validate that trackingId exists in the database — reject unknown IDs to prevent data spoofing
+        // TODO: Validate Origin/Referer header against the registered domains for this trackingId to block cross-site spoofing
 
         visitorService.getOrCreateVisitor(payload.getVisitorId(), payload.getFirstSeen());
 
@@ -52,9 +53,8 @@ public class SessionService {
     }
 
     public Session endSession(SessionEndRequest payload){
-        //Todo: Add verification logic to check if trackingPropId belongs to userId in cookie (protected route)
-
-        //Todo: Add verification logic if visitorId has the sessionId in payload inside their doc
+        // TODO: Validate that trackingId exists in the database — reject unknown IDs to prevent data spoofing
+        // TODO: Validate Origin/Referer header against registered domains for this trackingId to block cross-site spoofing
 
         Session existingSession = sessionRepo.findBySessionIdAndVisitorId(payload.getSessionId(), payload.getVisitorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Session Doesn't Exist!"));

@@ -2,6 +2,7 @@ package com.analytics.engine.backend.service;
 
 import com.analytics.engine.backend.dto.requests.CreateUserRequest;
 import com.analytics.engine.backend.dto.requests.GenericUserRequest;
+import com.analytics.engine.backend.dto.responses.GenericUserResponse;
 import com.analytics.engine.backend.exception.UserAlreadyExistsException;
 import com.analytics.engine.backend.exception.UserNotFoundException;
 import com.analytics.engine.backend.model.User;
@@ -69,12 +70,13 @@ public class UserService {
 
     }
 
-    public User getUserFromId(String userId){
-        return userRepo.findById(userId).orElseThrow(()->new UserNotFoundException("User Doesn't Exist!"));
+    public GenericUserResponse getUserFromId(String userId){
+        User user = userRepo.findById(userId).orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
+        return new GenericUserResponse(user.getId(), user.getEmail(), user.getFullName());
     }
 
     public void addTrackingPropertyId(String userId, String trackingPropertyId) {
-        User user = getUserFromId(userId);
+        User user = userRepo.findById(userId).orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
         if (user.getTrackingPropertyIds() == null) {
             user.setTrackingPropertyIds(new ArrayList<>());
         }

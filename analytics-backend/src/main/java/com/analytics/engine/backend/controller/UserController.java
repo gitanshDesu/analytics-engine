@@ -1,6 +1,6 @@
 package com.analytics.engine.backend.controller;
 
-import com.analytics.engine.backend.model.User;
+import com.analytics.engine.backend.dto.responses.GenericUserResponse;
 import com.analytics.engine.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,7 +17,7 @@ public class UserController {
     private UserService userService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable String id){
+    public ResponseEntity<GenericUserResponse> getUserById(@PathVariable String id){
         return new ResponseEntity<>(userService.getUserFromId(id), HttpStatus.OK);
     }
 }
