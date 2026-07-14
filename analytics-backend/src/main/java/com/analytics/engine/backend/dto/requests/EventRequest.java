@@ -14,7 +14,7 @@ import java.util.Map;
 public class EventRequest {
     private String visitorId; //created and maintained on fe
     private String sessionId; //created and maintained on fe
-    private String trackingPropertyId; //from sdk
+    private String trackingId; //from sdk (TP-XXXX)
     private EventType eventType;
     private Instant eventTime; // timestamp created on fe and sent
     private Instant lastActivityAt; //timestamp needed by session

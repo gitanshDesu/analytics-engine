@@ -28,8 +28,10 @@ public class VisitorService {
 
     // Returns existing visitor or creates one if this is their first session
     public Visitor getOrCreateVisitor(String visitorId, Instant firstSeen) {
-        return visitorRepo.findByVisitorId(visitorId)
+        Visitor visitor = visitorRepo.findByVisitorId(visitorId)
                 .orElseGet(() -> createVisitor(visitorId, firstSeen));
+        visitor.setTotalSessions(visitor.getTotalSessions() + 1);
+        return visitorRepo.save(visitor);
     }
 
     public Visitor getVisitorFromId(String visitorId) {

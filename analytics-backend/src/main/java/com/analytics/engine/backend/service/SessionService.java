@@ -31,10 +31,11 @@ public class SessionService {
                 : httpRequest.getRemoteAddr();
 
         Session newSession = new Session();
-        newSession.setTrackingPropertyId(payload.getTrackingPropertyId());
+        newSession.setTrackingId(payload.getTrackingId());
         newSession.setVisitorId(payload.getVisitorId());
         newSession.setSessionId(payload.getSessionId());
         newSession.setStartedAt(payload.getStartedAt());
+        newSession.setLastActivityAt(payload.getLastActivityAt());
         newSession.setLandingPage(payload.getLandingPage());
         newSession.setReferer(httpRequest.getHeader("Referer"));
         newSession.setIpAddress(ip);
@@ -42,6 +43,10 @@ public class SessionService {
         newSession.setOs(UserAgentParser.getOs(userAgent));
         newSession.setDeviceType(UserAgentParser.getDeviceType(userAgent));
         newSession.setTimezone(payload.getTimezone());
+        newSession.setPageViews(0);
+        newSession.setEventCount(0);
+        newSession.setBounced(false);
+        newSession.setDurationSeconds(0L);
 
         return sessionRepo.save(newSession);
     }

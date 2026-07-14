@@ -23,7 +23,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document
+@Document(collection = "trackingProperties")
 public class TrackingProperty {
     @Id
     private String id;

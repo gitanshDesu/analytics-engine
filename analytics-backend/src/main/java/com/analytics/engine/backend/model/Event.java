@@ -27,7 +27,7 @@ public class Event {
     @Id
     private String id;
     @Indexed
-    private String trackingPropertyId;
+    private String trackingId;
     @Indexed
     private String visitorId;
     @Indexed

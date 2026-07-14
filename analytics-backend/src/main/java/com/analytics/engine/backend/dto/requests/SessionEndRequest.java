@@ -10,7 +10,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SessionEndRequest {
-    private String trackingPropertyId;
+    private String trackingId;
     private String visitorId;
     private String sessionId;
     private Instant endedAt;

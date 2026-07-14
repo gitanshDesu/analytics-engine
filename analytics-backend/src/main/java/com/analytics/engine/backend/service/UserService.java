@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+
+import java.util.ArrayList;
 import java.util.Optional;
 
 /**
@@ -73,6 +75,9 @@ public class UserService {
 
     public void addTrackingPropertyId(String userId, String trackingPropertyId) {
         User user = getUserFromId(userId);
+        if (user.getTrackingPropertyIds() == null) {
+            user.setTrackingPropertyIds(new ArrayList<>());
+        }
         user.getTrackingPropertyIds().add(trackingPropertyId);
         userRepo.save(user);
     }

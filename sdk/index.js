@@ -168,13 +168,13 @@
    */
   const sendSessionStart = (session) => {
     postJson(SESSION_START_URL, {
-      trackingPropertyId: TRACKING_PROPERTY_ID,
+      trackingId: TRACKING_PROPERTY_ID,
       visitorId: visitor.visitorId,
       sessionId: session.sessionId,
       firstSeen: visitor.firstSeen,
       startedAt: session.startedAt,
       lastActivityAt: session.startedAt,
-      landingPage: location.href,
+      landingPage: location.pathname,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     });
   };
@@ -189,7 +189,7 @@
    */
   const sendSessionEnd = (session, endedAt, exitPage) => {
     postJsonBeacon(SESSION_END_URL, {
-      trackingPropertyId: TRACKING_PROPERTY_ID,
+      trackingId: TRACKING_PROPERTY_ID,
       visitorId: visitor.visitorId,
       sessionId: session.sessionId,
       endedAt,
@@ -286,7 +286,7 @@
     enqueueEvent({
       visitorId: visitor.visitorId,
       sessionId: session.sessionId,
-      trackingPropertyId: TRACKING_PROPERTY_ID,
+      trackingId: TRACKING_PROPERTY_ID,
       eventType,
       eventTime: ts,
       lastActivityAt: ts,

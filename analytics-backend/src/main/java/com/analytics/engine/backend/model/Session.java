@@ -33,7 +33,7 @@ public class Session {
     @Indexed
     private String visitorId;
     @Indexed
-    private String trackingPropertyId;
+    private String trackingId;
     private Instant startedAt;
     private Instant endedAt;
     private Instant lastActivityAt;

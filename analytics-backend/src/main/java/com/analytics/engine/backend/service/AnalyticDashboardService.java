@@ -1,33 +1,204 @@
 package com.analytics.engine.backend.service;
+
+import com.analytics.engine.backend.dto.responses.*;
+import com.analytics.engine.backend.enums.EventType;
+import com.analytics.engine.backend.repo.VisitorRepo;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
-/**
- * Service responsible for aggregating and providing analytics data for the
- * Analytics Dashboard.
- *
- * <p>This service is read-only and does not create or modify analytics data.
- * It queries the underlying analytics collections (Visitors, Sessions and
- * Events) to compute metrics required by the dashboard.</p>
- *
- * <p>Responsibilities:</p>
- * <ul>
- *     <li>Provide summary metrics for a Tracking Property.</li>
- *     <li>Calculate the total number of visitors.</li>
- *     <li>Calculate the total number of sessions.</li>
- *     <li>Calculate the total number of page views.</li>
- *     <li>Calculate the average session duration.</li>
- *     <li>Calculate the bounce rate.</li>
- *     <li>Retrieve the most visited pages.</li>
- *     <li>Retrieve the most clicked buttons and links.</li>
- *     <li>Provide visitor device, browser and operating system statistics.</li>
- *     <li>Provide geographic distribution of visitors (country/city).</li>
- *     <li>Provide referrer statistics (where visitors came from).</li>
- *     <li>Filter analytics by a given date range.</li>
- * </ul>
- */
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class AnalyticDashboardService {
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private VisitorRepo visitorRepo;
+
+    private static final int TOP_N = 10;
+
+    public SummaryResponse getSummary(String trackingId, Instant from, Instant to) {
+        Criteria baseCriteria = Criteria.where("trackingId").is(trackingId)
+                .and("startedAt").gte(from).lte(to);
+
+        // Core session stats
+        Aggregation statsAgg = Aggregation.newAggregation(
+                Aggregation.match(baseCriteria),
+                Aggregation.group()
+                        .count().as("totalSessions")
+                        .sum("pageViews").as("totalPageViews")
+                        .sum(ConditionalOperators.when(Criteria.where("bounced").is(true)).then(1).otherwise(0)).as("bouncedCount")
+                        .avg("pageViews").as("avgPagesPerSession")
+        );
+        Document stats = mongoTemplate.aggregate(statsAgg, "sessions", Document.class).getUniqueMappedResult();
+
+        long totalSessions = stats != null ? ((Number) stats.get("totalSessions")).longValue() : 0L;
+        long totalPageViews = stats != null ? ((Number) stats.get("totalPageViews")).longValue() : 0L;
+        long bouncedCount = stats != null ? ((Number) stats.get("bouncedCount")).longValue() : 0L;
+        double avgPagesPerSession = stats != null ? ((Number) stats.get("avgPagesPerSession")).doubleValue() : 0.0;
+        double bounceRate = totalSessions > 0 ? (double) bouncedCount / totalSessions * 100 : 0.0;
+
+        // Avg duration — only ended sessions (durationSeconds > 0)
+        Aggregation durationAgg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to)
+                        .and("endedAt").ne(null)
+                        .and("durationSeconds").gt(0)),
+                Aggregation.group().avg("durationSeconds").as("avgDuration")
+        );
+        Document durationResult = mongoTemplate.aggregate(durationAgg, "sessions", Document.class).getUniqueMappedResult();
+        double avgSessionDurationSeconds = durationResult != null ? ((Number) durationResult.get("avgDuration")).doubleValue() : 0.0;
+
+        // Total unique visitors
+        Aggregation uniqueVisitorAgg = Aggregation.newAggregation(
+                Aggregation.match(baseCriteria),
+                Aggregation.group("visitorId"),
+                Aggregation.count().as("count")
+        );
+        Document uvResult = mongoTemplate.aggregate(uniqueVisitorAgg, "sessions", Document.class).getUniqueMappedResult();
+        long totalUniqueVisitors = uvResult != null ? ((Number) uvResult.get("count")).longValue() : 0L;
+
+        // New vs returning — get distinct visitorIds, then check firstSeen in range
+        Aggregation visitorIdsAgg = Aggregation.newAggregation(
+                Aggregation.match(baseCriteria),
+                Aggregation.group("visitorId")
+        );
+        List<String> visitorIds = mongoTemplate.aggregate(visitorIdsAgg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> d.getString("_id"))
+                .collect(Collectors.toList());
+
+        long newVisitors = visitorIds.isEmpty() ? 0L
+                : visitorRepo.countByVisitorIdInAndFirstSeenBetween(visitorIds, from, to);
+        long returningVisitors = totalUniqueVisitors - newVisitors;
+
+        return new SummaryResponse(totalSessions, totalUniqueVisitors, totalPageViews,
+                bounceRate, avgSessionDurationSeconds, avgPagesPerSession, newVisitors, returningVisitors);
+    }
+
+    public List<TrafficDataPoint> getTrafficOverTime(String trackingId, Instant from, Instant to, String granularity) {
+        String dateFormat = "weekly".equalsIgnoreCase(granularity) ? "%Y-%U" : "%Y-%m-%d";
+
+        AggregationOperation projectDate = ctx -> new Document("$project",
+                new Document("date", new Document("$dateToString",
+                        new Document("format", dateFormat).append("date", "$startedAt")))
+                        .append("pageViews", 1));
+
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to)),
+                projectDate,
+                Aggregation.group("date")
+                        .count().as("sessions")
+                        .sum("pageViews").as("pageViews"),
+                Aggregation.sort(Sort.Direction.ASC, "_id")
+        );
+
+        return mongoTemplate.aggregate(agg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> new TrafficDataPoint(
+                        d.getString("_id"),
+                        ((Number) d.get("sessions")).longValue(),
+                        ((Number) d.get("pageViews")).longValue()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public PagesResponse getPages(String trackingId, Instant from, Instant to) {
+        // Top pages by PAGE_VIEW events
+        Aggregation topPagesAgg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("eventType").is(EventType.PAGE_VIEW)
+                        .and("eventTime").gte(from).lte(to)),
+                Aggregation.group("pagePath").count().as("count"),
+                Aggregation.sort(Sort.Direction.DESC, "count"),
+                Aggregation.limit(TOP_N)
+        );
+        List<PageStat> topPages = mongoTemplate.aggregate(topPagesAgg, "events", Document.class)
+                .getMappedResults().stream()
+                .map(d -> new PageStat(d.getString("_id"), ((Number) d.get("count")).longValue()))
+                .collect(Collectors.toList());
+
+        // Top landing pages
+        Aggregation landingAgg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to)),
+                Aggregation.group("landingPage").count().as("count"),
+                Aggregation.sort(Sort.Direction.DESC, "count"),
+                Aggregation.limit(TOP_N)
+        );
+        List<PageStat> topLandingPages = mongoTemplate.aggregate(landingAgg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> new PageStat(d.getString("_id"), ((Number) d.get("count")).longValue()))
+                .collect(Collectors.toList());
+
+        // Top exit pages
+        Aggregation exitAgg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to)
+                        .and("exitPage").ne(null)),
+                Aggregation.group("exitPage").count().as("count"),
+                Aggregation.sort(Sort.Direction.DESC, "count"),
+                Aggregation.limit(TOP_N)
+        );
+        List<PageStat> topExitPages = mongoTemplate.aggregate(exitAgg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> new PageStat(d.getString("_id"), ((Number) d.get("count")).longValue()))
+                .collect(Collectors.toList());
+
+        return new PagesResponse(topPages, topLandingPages, topExitPages);
+    }
+
+    public List<SourceStat> getSources(String trackingId, Instant from, Instant to) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to)),
+                Aggregation.group("referer").count().as("sessions"),
+                Aggregation.sort(Sort.Direction.DESC, "sessions"),
+                Aggregation.limit(TOP_N)
+        );
+        return mongoTemplate.aggregate(agg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> {
+                    String source = d.getString("_id");
+                    return new SourceStat(source != null ? source : "Direct", ((Number) d.get("sessions")).longValue());
+                })
+                .collect(Collectors.toList());
+    }
+
+    public DevicesResponse getDevices(String trackingId, Instant from, Instant to) {
+        Criteria match = Criteria.where("trackingId").is(trackingId)
+                .and("startedAt").gte(from).lte(to);
+
+        return new DevicesResponse(
+                groupSessionsByField("browser", match),
+                groupSessionsByField("os", match),
+                groupSessionsByField("deviceType", match)
+        );
+    }
+
+    private List<DeviceBreakdown> groupSessionsByField(String field, Criteria match) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(match),
+                Aggregation.group(field).count().as("count"),
+                Aggregation.sort(Sort.Direction.DESC, "count")
+        );
+        return mongoTemplate.aggregate(agg, "sessions", Document.class)
+                .getMappedResults().stream()
+                .map(d -> new DeviceBreakdown(d.getString("_id"), ((Number) d.get("count")).longValue()))
+                .collect(Collectors.toList());
+    }
 }

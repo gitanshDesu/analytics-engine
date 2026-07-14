@@ -53,6 +53,7 @@ public class TrackingService {
     }
 
     private String generateTrackingId() {
-        return UUID.randomUUID().toString().replace("-", "");
+        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "TP-" + token;
     }
 }

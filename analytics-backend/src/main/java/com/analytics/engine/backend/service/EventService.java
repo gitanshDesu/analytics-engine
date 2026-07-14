@@ -1,7 +1,10 @@
 package com.analytics.engine.backend.service;
 
 import com.analytics.engine.backend.dto.requests.EventRequest;
+import com.analytics.engine.backend.enums.EventType;
+import com.analytics.engine.backend.exception.ResourceNotFoundException;
 import com.analytics.engine.backend.model.Event;
+import com.analytics.engine.backend.model.Session;
 import com.analytics.engine.backend.repo.EventRepo;
 import com.analytics.engine.backend.repo.SessionRepo;
 import lombok.extern.slf4j.Slf4j;
@@ -14,17 +17,18 @@ public class EventService {
 
     @Autowired
     private EventRepo eventRepo;
+
     @Autowired
     private SessionRepo sessionRepo;
 
-    public Event createEvent(EventRequest request){
+    public Event createEvent(EventRequest request) {
         //Todo: Add verification logic to check if trackingId belongs to userId in cookie (protected route)
 
-        //Todo: check if visitorId and sessionId are in db (if not send error)
+        Session session = sessionRepo.findBySessionIdAndVisitorId(request.getSessionId(), request.getVisitorId())
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found for sessionId=" + request.getSessionId()));
 
         Event newEvent = new Event();
-
-        newEvent.setTrackingPropertyId(request.getTrackingPropertyId());
+        newEvent.setTrackingId(request.getTrackingId());
         newEvent.setVisitorId(request.getVisitorId());
         newEvent.setSessionId(request.getSessionId());
         newEvent.setEventType(request.getEventType());
@@ -33,9 +37,13 @@ public class EventService {
         newEvent.setPayload(request.getPayload());
         newEvent.setPageTitle(request.getPageTitle());
 
+        session.setEventCount(session.getEventCount() + 1);
+        if (request.getEventType() == EventType.PAGE_VIEW) {
+            session.setPageViews(session.getPageViews() + 1);
+        }
+        session.setLastActivityAt(request.getLastActivityAt());
+        sessionRepo.save(session);
 
-        //Create event and save in db
         return eventRepo.save(newEvent);
     }
-
 }

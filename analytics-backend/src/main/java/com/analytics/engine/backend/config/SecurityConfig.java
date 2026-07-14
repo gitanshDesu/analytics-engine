@@ -29,6 +29,7 @@ public class SecurityConfig {
                         // TODO: lock down once JWT filter is wired up
                         .requestMatchers("/api/v1/tracking/**").permitAll()
                         .requestMatchers("/api/v1/pages/**").permitAll()
+                        .requestMatchers("/api/v1/dashboard/**").permitAll()
                         .anyRequest().authenticated()
                 );
         return http.build();
