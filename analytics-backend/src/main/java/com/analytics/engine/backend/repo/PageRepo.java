@@ -3,5 +3,8 @@ package com.analytics.engine.backend.repo;
 import com.analytics.engine.backend.model.Page;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
+
 public interface PageRepo extends MongoRepository<Page,String> {
+    List<Page> findByTrackingId(String trackingId);
 }

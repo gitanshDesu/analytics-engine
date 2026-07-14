@@ -1,50 +1,58 @@
 package com.analytics.engine.backend.service;
-import com.analytics.engine.backend.dto.GenerateTrackingProp;
+
+import com.analytics.engine.backend.exception.ResourceNotFoundException;
 import com.analytics.engine.backend.model.TrackingProperty;
+import com.analytics.engine.backend.repo.TrackingPropertyRepo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-/**
- * Service responsible for processing analytics events received from the SDK.
- *
- * Responsibilities:
- * <ul>
- *     <li>Validate incoming tracking requests.</li>
- *     <li>Create or update Visitors and Sessions.</li>
- *     <li>Persist Events.</li>
- *     <li>Compute session metadata such as page views and duration.</li>
- * </ul>
- */
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
 public class TrackingService {
 
+    @Autowired
+    private TrackingPropertyRepo trackingPropertyRepo;
 
+    @Autowired
+    private UserService userService;
 
+    public TrackingProperty createTrackingProperty(String userId, List<String> domains) {
+        TrackingProperty tp = new TrackingProperty();
+        tp.setUserId(userId);
+        tp.setDomains(domains);
+        tp.setTrackingId(generateTrackingId());
+        tp.setPageIds(new ArrayList<>());
 
+        TrackingProperty saved = trackingPropertyRepo.save(tp);
 
+        userService.addTrackingPropertyId(userId, saved.getId());
 
-    //generates Tracking Property for a User (we get userId + email from cookie)
-    //protected route
-    public TrackingProperty getTrackingProperty(GenerateTrackingProp payload){
-        return null;
+        log.info("TrackingProperty created: trackingId={} for userId={}", saved.getTrackingId(), userId);
+        return saved;
     }
 
-    public String generateTrackingId(String pagePath){
-        //Write logic to generate unique tracking ids to associate them with several page-paths (a singular tracking id can be used for multiple pages by a user)
-
-        return null;
+    public TrackingProperty getByTrackingId(String trackingId) {
+        return trackingPropertyRepo.findByTrackingId(trackingId)
+                .orElseThrow(() -> new ResourceNotFoundException("TrackingProperty not found for trackingId=" + trackingId));
     }
 
-        //use tracking id to distinguish page(www.yatra.com/cheap-flights/search) user is tracking
-    //page path: cheap-flights/search, flight-schedule/seqarch, trains/b2c/listing, trains/b2c/listing/review (using a tracking id can track trains' listing and review as well)
+    public List<TrackingProperty> getAllByUserId(String userId) {
+        return trackingPropertyRepo.findAllByUserId(userId);
+    }
 
+    public void addPageIdToTrackingProperty(String trackingPropertyId, String pageId) {
+        TrackingProperty tp = trackingPropertyRepo.findById(trackingPropertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("TrackingProperty not found"));
+        tp.getPageIds().add(pageId);
+        trackingPropertyRepo.save(tp);
+    }
 
-
-
-
-
-
-
+    private String generateTrackingId() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
 }

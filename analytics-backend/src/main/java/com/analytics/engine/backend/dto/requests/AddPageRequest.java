@@ -5,17 +5,14 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-public class AddPageRequest extends GenericPageRequest{
-    private List<String> domains;
-    private String basePathUrl;
-    public AddPageRequest(String pagePath, PageType pageType,  List<
-            String> domains){
-        super(pagePath,pageType);
-        this.domains = domains;
+public class AddPageRequest extends GenericPageRequest {
+    private String trackingId;
+
+    public AddPageRequest(String pagePath, PageType pageType, String trackingId) {
+        super(pagePath, pageType);
+        this.trackingId = trackingId;
     }
 }

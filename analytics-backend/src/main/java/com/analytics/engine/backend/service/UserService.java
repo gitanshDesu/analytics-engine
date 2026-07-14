@@ -71,4 +71,10 @@ public class UserService {
         return userRepo.findById(userId).orElseThrow(()->new UserNotFoundException("User Doesn't Exist!"));
     }
 
+    public void addTrackingPropertyId(String userId, String trackingPropertyId) {
+        User user = getUserFromId(userId);
+        user.getTrackingPropertyIds().add(trackingPropertyId);
+        userRepo.save(user);
+    }
+
 }

@@ -1,4 +1,4 @@
-package com.analytics.engine.backend.dto;
+package com.analytics.engine.backend.dto.requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,10 +9,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class GenerateTrackingProp {
-    private String userId;
-
+public class CreateTrackingPropertyRequest {
     private List<String> domains;
-    private List<String> pageIds;
-    private String trackingId;
 }

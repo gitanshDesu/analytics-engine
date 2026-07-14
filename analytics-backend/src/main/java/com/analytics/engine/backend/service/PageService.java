@@ -1,6 +1,5 @@
 package com.analytics.engine.backend.service;
 
-import com.analytics.engine.backend.dto.GenerateTrackingProp;
 import com.analytics.engine.backend.dto.requests.AddPageRequest;
 import com.analytics.engine.backend.exception.ResourceNotFoundException;
 import com.analytics.engine.backend.model.Page;
@@ -10,42 +9,39 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @Slf4j
 public class PageService {
+
     @Autowired
-    private TrackingService trackingPropertyService;
+    private TrackingService trackingService;
 
     @Autowired
     private PageRepo pageRepo;
 
-    //Note: Derive BasePath from PagePath
+    public Page addAPageToTrack(AddPageRequest payload) {
+        TrackingProperty trackingProperty = trackingService.getByTrackingId(payload.getTrackingId());
 
-    //adds a Page for user under a basePath (/listing, /review, /search)
-    public Page addAPageToTrack(AddPageRequest payload){
-        //Todo: Get user id from cookie
-        String userId;
+        Page page = new Page();
+        page.setTrackingId(trackingProperty.getTrackingId());
+        page.setPagePath(payload.getPagePath());
+        page.setPageType(payload.getPageType());
 
-        //Generate Tracking Prop for page
+        Page savedPage = pageRepo.save(page);
 
-        String trackingId = trackingPropertyService.generateTrackingId(payload.getPagePath());
-        GenerateTrackingProp trackingPropPayload = new GenerateTrackingProp();
-        TrackingProperty trackingProperty = trackingPropertyService.getTrackingProperty(trackingPropPayload);
+        trackingService.addPageIdToTrackingProperty(trackingProperty.getId(), savedPage.getId());
 
-        //Save Page in repo and return
-        return null;
-
+        log.info("Page added: pageId={} under trackingId={}", savedPage.getId(), trackingProperty.getTrackingId());
+        return savedPage;
     }
 
-    public List<Page>  getAllPagesTracked(String trackingId){
-        //Todo: write logic get all pages and create Pages doc and return
-        return new ArrayList<>();
+    public List<Page> getAllPagesTracked(String trackingId) {
+        return pageRepo.findByTrackingId(trackingId);
     }
 
-    public Page getPageFromId(String pageId){
-        return pageRepo.findById(pageId).orElseThrow(()->new ResourceNotFoundException("Page Doesn't Exist!"));
+    public Page getPageFromId(String pageId) {
+        return pageRepo.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page Doesn't Exist!"));
     }
 }
