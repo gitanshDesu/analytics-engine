@@ -3,8 +3,12 @@ package com.analytics.engine.backend.service;
 import com.analytics.engine.backend.exception.ResourceNotFoundException;
 import com.analytics.engine.backend.model.Visitor;
 import com.analytics.engine.backend.repo.VisitorRepo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+@Service
+@Slf4j
 public class VisitorService {
     @Autowired
     private VisitorRepo visitorRepo;

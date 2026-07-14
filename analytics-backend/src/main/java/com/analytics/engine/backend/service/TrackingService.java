@@ -1,7 +1,5 @@
 package com.analytics.engine.backend.service;
 import com.analytics.engine.backend.dto.GenerateTrackingProp;
-import com.analytics.engine.backend.dto.requests.AddPageRequest;
-import com.analytics.engine.backend.model.Page;
 import com.analytics.engine.backend.model.TrackingProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
