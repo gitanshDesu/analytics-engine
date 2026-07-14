@@ -6,9 +6,6 @@
  *           data-tracking-id="TP-xxxx"
  *           data-api-base="https://host/analytics-backend"
  *           defer></script>
- *
- * Public API: window.AE.track(eventType, payload) — for business events
- * (FLIGHT_SEARCH, HOTEL_SEARCH, SEARCH_RESULT_CLICK) the DOM can't infer on its own.
  */
 (() => {
   'use strict';
@@ -46,9 +43,6 @@
     LINK_CLICK: 'LINK_CLICK',
     SCROLL: 'SCROLL',
     FORM_SUBMIT: 'FORM_SUBMIT',
-    FLIGHT_SEARCH: 'FLIGHT_SEARCH',
-    HOTEL_SEARCH: 'HOTEL_SEARCH',
-    SEARCH_RESULT_CLICK: 'SEARCH_RESULT_CLICK'
   };
 
   // ==== generic utilities =================================================
@@ -407,11 +401,6 @@
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
     setInterval(() => flushEventQueue(false), BATCH_FLUSH_INTERVAL_MS);
-
-    // Public API: for business events the fixed EventType enum can't infer from DOM
-    // structure alone (FLIGHT_SEARCH, HOTEL_SEARCH, SEARCH_RESULT_CLICK).
-    window.AE = window.AE ?? {};
-    window.AE.track = (eventType, payload) => track(eventType, payload);
 
     visitor = ensureVisitor();
     ensureActiveSession();

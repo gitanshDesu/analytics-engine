@@ -54,12 +54,15 @@ public class SessionService {
         Session existingSession = sessionRepo.findBySessionIdAndVisitorId(payload.getSessionId(), payload.getVisitorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Session Doesn't Exist!"));
 
-        existingSession.setLastActivityAt(payload.getLastActivityAt());
         existingSession.setEndedAt(payload.getEndedAt());
+        existingSession.setLastActivityAt(payload.getLastActivityAt());
         existingSession.setExitPage(payload.getExitPage());
         existingSession.setPageViews(payload.getPageViews());
         existingSession.setEventCount(payload.getEventCount());
         existingSession.setBounced(payload.getBounced());
+        existingSession.setDurationSeconds(
+                payload.getEndedAt().getEpochSecond() - existingSession.getStartedAt().getEpochSecond()
+        );
 
         visitorService.updateLastSeen(payload.getVisitorId(), payload.getLastSeen());
 

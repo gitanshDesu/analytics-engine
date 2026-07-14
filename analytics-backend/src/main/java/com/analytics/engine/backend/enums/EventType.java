@@ -9,7 +9,4 @@ public enum EventType {
     LINK_CLICK,
     SCROLL,
     FORM_SUBMIT,
-    FLIGHT_SEARCH,
-    HOTEL_SEARCH,
-    SEARCH_RESULT_CLICK,
 }
