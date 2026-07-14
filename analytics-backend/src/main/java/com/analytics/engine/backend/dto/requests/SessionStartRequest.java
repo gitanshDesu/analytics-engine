@@ -17,5 +17,6 @@ public class SessionStartRequest {
     private Instant startedAt; // for session model
     private Instant lastActivityAt; // for 1st session request laa == sa
     private String landingPage; // from fe
+    private String timezone; // from fe via Intl.DateTimeFormat().resolvedOptions().timeZone
 
 }

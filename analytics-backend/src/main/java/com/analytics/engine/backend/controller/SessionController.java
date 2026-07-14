@@ -4,6 +4,7 @@ import com.analytics.engine.backend.dto.requests.SessionEndRequest;
 import com.analytics.engine.backend.dto.requests.SessionStartRequest;
 import com.analytics.engine.backend.model.Session;
 import com.analytics.engine.backend.service.SessionService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,8 +19,8 @@ public class SessionController {
     private SessionService sessionService;
 
     @PostMapping("/start")
-    public ResponseEntity<Session> startSession(SessionStartRequest request){
-        return new ResponseEntity<>(sessionService.createSession(request), HttpStatus.OK);
+    public ResponseEntity<Session> startSession(SessionStartRequest request, HttpServletRequest httpRequest){
+        return new ResponseEntity<>(sessionService.createSession(request, httpRequest), HttpStatus.OK);
     }
 
     @PostMapping("/end")

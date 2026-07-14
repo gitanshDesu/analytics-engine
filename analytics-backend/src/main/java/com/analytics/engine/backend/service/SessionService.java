@@ -7,6 +7,7 @@ import com.analytics.engine.backend.model.Session;
 import com.analytics.engine.backend.model.Visitor;
 import com.analytics.engine.backend.repo.SessionRepo;
 import com.analytics.engine.backend.repo.VisitorRepo;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,20 +25,28 @@ public class SessionService {
     @Autowired
     private VisitorRepo visitorRepo;
 
-    public Session createSession(SessionStartRequest payload){
+    public Session createSession(SessionStartRequest payload, HttpServletRequest httpRequest){
         //Todo: verify that trackingPropertyId belongs to the userId in cookie (protected route)
 
         //Todo: Add logic to verify if visitorId is already present or not in db (if yes no need to create new), also sessionId must be unique (uuid-v4 on fe)
 
-        //Todo: Add logic to get visitor meta-data from request headers
+        String userAgent = httpRequest.getHeader("User-Agent");
+        String ip = httpRequest.getHeader("X-Forwarded-For") != null
+                ? httpRequest.getHeader("X-Forwarded-For").split(",")[0].trim()
+                : httpRequest.getRemoteAddr();
 
-        //Add session
         Session newSession = new Session();
         newSession.setTrackingPropertyId(payload.getTrackingPropertyId());
         newSession.setVisitorId(payload.getVisitorId());
         newSession.setSessionId(payload.getSessionId());
         newSession.setStartedAt(payload.getStartedAt());
         newSession.setLandingPage(payload.getLandingPage());
+        newSession.setReferer(httpRequest.getHeader("Referer"));
+        newSession.setIpAddress(ip);
+        newSession.setBrowser(UserAgentParser.getBrowser(userAgent));
+        newSession.setOs(UserAgentParser.getOs(userAgent));
+        newSession.setDeviceType(UserAgentParser.getDeviceType(userAgent));
+        newSession.setTimezone(payload.getTimezone());
 
         //set firstSeen in visitor
         Visitor visitor = visitorService.getVisitorFromId(payload.getVisitorId());
@@ -68,9 +77,35 @@ public class SessionService {
         visitorRepo.save(visitor);
 
         return sessionRepo.save(existingSession);
-
-
     }
 
+    private static class UserAgentParser {
 
+        static String getBrowser(String ua) {
+            if (ua == null) return "Unknown";
+            if (ua.contains("Edg/"))     return "Edge";
+            if (ua.contains("OPR/"))     return "Opera";
+            if (ua.contains("Chrome/"))  return "Chrome";
+            if (ua.contains("Firefox/")) return "Firefox";
+            if (ua.contains("Safari/") && ua.contains("Version/")) return "Safari";
+            return "Unknown";
+        }
+
+        static String getOs(String ua) {
+            if (ua == null) return "Unknown";
+            if (ua.contains("Android"))   return "Android";
+            if (ua.contains("iPhone") || ua.contains("iPad")) return "iOS";
+            if (ua.contains("Windows"))   return "Windows";
+            if (ua.contains("Macintosh")) return "macOS";
+            if (ua.contains("Linux"))     return "Linux";
+            return "Unknown";
+        }
+
+        static String getDeviceType(String ua) {
+            if (ua == null) return "Unknown";
+            if (ua.contains("iPad") || (ua.contains("Android") && !ua.contains("Mobile"))) return "Tablet";
+            if (ua.contains("Mobile") || ua.contains("iPhone")) return "Phone";
+            return "Desktop";
+        }
+    }
 }
