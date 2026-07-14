@@ -32,7 +32,6 @@ public class EventService {
         newEvent.setEventTime(request.getEventTime());
         newEvent.setPayload(request.getPayload());
         newEvent.setPageTitle(request.getPageTitle());
-        newEvent.setPageType(request.getPageType());
 
 
         //Create event and save in db

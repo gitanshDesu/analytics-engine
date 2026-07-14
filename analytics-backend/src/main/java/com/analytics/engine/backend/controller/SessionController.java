@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,12 +20,12 @@ public class SessionController {
     private SessionService sessionService;
 
     @PostMapping("/start")
-    public ResponseEntity<Session> startSession(SessionStartRequest request, HttpServletRequest httpRequest){
+    public ResponseEntity<Session> startSession(@RequestBody SessionStartRequest request, HttpServletRequest httpRequest){
         return new ResponseEntity<>(sessionService.createSession(request, httpRequest), HttpStatus.OK);
     }
 
     @PostMapping("/end")
-    public ResponseEntity<Session> endSession(SessionEndRequest request){
+    public ResponseEntity<Session> endSession( @RequestBody SessionEndRequest request){
         return new ResponseEntity<>(sessionService.endSession(request), HttpStatus.OK);
     }
 }

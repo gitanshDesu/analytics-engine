@@ -1,7 +1,6 @@
 package com.analytics.engine.backend.dto.requests;
 
 import com.analytics.engine.backend.enums.EventType;
-import com.analytics.engine.backend.enums.PageType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +21,5 @@ public class EventRequest {
     private Map<String,Object> payload;
     private String pagePath; // send from fe as well
     private String pageTitle;
-    private PageType pageType;
 
 }
