@@ -148,11 +148,20 @@
    * Sends a JSON POST via `navigator.sendBeacon` for calls fired during unload/tab-hide,
    * falling back to a regular fetch post if the beacon can't be queued (unsupported, or
    * payload over the beacon size limit).
+   *
+   * Blob type is `text/plain`, not `application/json` — the SDK is loaded cross-origin from
+   * the tracked site, and `application/json` isn't a CORS-safelisted content type, so it forces
+   * a preflight OPTIONS request. sendBeacon only guarantees the beacon itself survives page
+   * teardown, not a preflight that has to complete first, so the real POST silently never goes
+   * out on most navigations/closes. `text/plain` is safelisted (no preflight), so the request
+   * fires as a genuinely "simple" cross-origin request that actually survives unload. The body
+   * is still JSON — the backend reads it as JSON regardless of this Content-Type (see
+   * WebConfig#extendMessageConverters on the backend).
    * @param {string} url
    * @param {object} data
    */
   const postJsonBeacon = (url, data) => {
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data)], { type: 'text/plain;charset=UTF-8' });
     const queuedByBrowser = navigator.sendBeacon?.(url, blob);
     if (!queuedByBrowser) postJson(url, data);
   };
@@ -305,6 +314,18 @@
   // clicks on plain divs/spans are not tracked, since the fixed backend EventType enum
   // has no generic "click" bucket to put them in.
 
+  /**
+   * Best-effort visible label for a clicked element. `<input type="submit">`/`<input
+   * type="button">` never have textContent — their label lives in the `value` attribute
+   * instead — so a plain `.textContent` read silently produces an empty string for those.
+   * Checked in order: `value` (submit/button inputs), then `textContent` (regular
+   * buttons/links), then `aria-label` (icon-only controls with no visible text at all).
+   * @param {Element} el
+   * @returns {string}
+   */
+  const getElementLabel = (el) =>
+    (el.value || el.textContent.trim() || el.getAttribute('aria-label') || '').slice(0, 200);
+
   /** @param {MouseEvent} e */
   const handleClick = (e) => {
     const interactiveTarget = e.target.closest?.('a[href], button, [type="submit"], [role="button"]');
@@ -315,10 +336,10 @@
 
     if (interactiveTarget.tagName === 'A') {
       eventType = EventType.LINK_CLICK;
-      payload = { href: interactiveTarget.href, text: interactiveTarget.textContent.trim().slice(0, 200) };
+      payload = { href: interactiveTarget.href, text: getElementLabel(interactiveTarget) };
     } else {
       eventType = EventType.BUTTON_CLICK;
-      payload = { text: interactiveTarget.textContent.trim().slice(0, 200), id: interactiveTarget.id || undefined };
+      payload = { text: getElementLabel(interactiveTarget), id: interactiveTarget.id || undefined };
     }
 
     track(eventType, payload);

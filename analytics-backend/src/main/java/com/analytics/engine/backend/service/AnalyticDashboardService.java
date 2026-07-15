@@ -15,7 +15,10 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -230,20 +233,34 @@ public class AnalyticDashboardService {
         );
     }
 
+    // Sort/limit happen in Java, not the aggregation pipeline, because null and blank-string
+    // payload values (e.g. an <input type="submit"> whose label lives in `value`, not
+    // textContent — see sdk/index.js#getElementLabel) both need to collapse into one
+    // "(unknown)" bucket. Grouping them in Mongo first would keep them as separate _id groups,
+    // so a DB-side sort+limit could rank and return duplicate "(unknown)" rows instead of one
+    // merged one.
     private List<DeviceBreakdown> groupEventsByField(String field, Criteria match, Sort.Direction sortDirection, int limit) {
         Aggregation agg = Aggregation.newAggregation(
                 Aggregation.match(match),
-                Aggregation.group(field).count().as("count"),
-                Aggregation.sort(sortDirection, sortDirection == Sort.Direction.ASC ? "_id" : "count"),
-                Aggregation.limit(limit)
+                Aggregation.group(field).count().as("count")
         );
-        return mongoTemplate.aggregate(agg, "events", Document.class)
-                .getMappedResults().stream()
-                .map(d -> {
-                    Object rawLabel = d.get("_id");
-                    String label = rawLabel != null ? String.valueOf(rawLabel) : "(unknown)";
-                    return new DeviceBreakdown(label, ((Number) d.get("count")).longValue());
-                })
+
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (Document d : mongoTemplate.aggregate(agg, "events", Document.class).getMappedResults()) {
+            Object rawLabel = d.get("_id");
+            String label = rawLabel == null || String.valueOf(rawLabel).isBlank()
+                    ? "(unknown)" : String.valueOf(rawLabel);
+            counts.merge(label, ((Number) d.get("count")).longValue(), Long::sum);
+        }
+
+        Comparator<Map.Entry<String, Long>> comparator = sortDirection == Sort.Direction.ASC
+                ? Map.Entry.comparingByKey()
+                : Map.Entry.<String, Long>comparingByValue().reversed();
+
+        return counts.entrySet().stream()
+                .sorted(comparator)
+                .limit(limit)
+                .map(e -> new DeviceBreakdown(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
     }
 
