@@ -2,6 +2,9 @@ package com.analytics.engine.backend.service;
 
 import com.analytics.engine.backend.dto.responses.*;
 import com.analytics.engine.backend.enums.EventType;
+import com.analytics.engine.backend.exception.ResourceNotFoundException;
+import com.analytics.engine.backend.model.Event;
+import com.analytics.engine.backend.model.Session;
 import com.analytics.engine.backend.repo.VisitorRepo;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -12,13 +15,16 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -268,6 +274,73 @@ public class AnalyticDashboardService {
                 .collect(Collectors.toList());
     }
 
+    // Each entry in `stepDefinitions` is "EVENT_TYPE" or "EVENT_TYPE:text", e.g.
+    // "BUTTON_CLICK:View Prices" — text (if present) is matched case-insensitively against
+    // either payload.text or payload.href, since the frontend doesn't know ahead of time
+    // which field a given event type populates. A step's count is the number of *distinct
+    // sessions* with at least one matching event — presence-based, not strict event-order —
+    // which is the simplest funnel definition and enough for "did this session do X".
+    public FunnelResponse getFunnel(String trackingId, Instant from, Instant to, List<String> stepDefinitions) {
+        log.info("getFunnel: trackingId={} from={} to={} steps={}", trackingId, from, to, stepDefinitions);
+
+        List<FunnelStep> result = new ArrayList<>();
+        Long firstStepCount = null;
+        Long previousStepCount = null;
+
+        for (String stepDefinition : stepDefinitions) {
+            String[] parts = stepDefinition.split(":", 2);
+            EventType eventType = EventType.valueOf(parts[0].trim().toUpperCase());
+            String textFilter = parts.length > 1 && !parts[1].isBlank() ? parts[1].trim() : null;
+
+            Criteria criteria = funnelStepCriteria(trackingId, from, to, eventType, textFilter);
+            Aggregation agg = Aggregation.newAggregation(
+                    Aggregation.match(criteria),
+                    Aggregation.group("sessionId"),
+                    Aggregation.count().as("count")
+            );
+            Document doc = mongoTemplate.aggregate(agg, "events", Document.class).getUniqueMappedResult();
+            long sessionCount = doc != null ? ((Number) doc.get("count")).longValue() : 0L;
+
+            if (firstStepCount == null) firstStepCount = sessionCount;
+            double percentOfFirstStep = firstStepCount > 0 ? (double) sessionCount / firstStepCount * 100 : 0.0;
+            double percentOfPreviousStep = previousStepCount == null ? 100.0
+                    : previousStepCount > 0 ? (double) sessionCount / previousStepCount * 100 : 0.0;
+
+            String label = textFilter != null ? textFilter : humanizeEventType(eventType);
+            result.add(new FunnelStep(label, eventType.name(), textFilter, sessionCount,
+                    percentOfFirstStep, percentOfPreviousStep));
+            previousStepCount = sessionCount;
+        }
+
+        return new FunnelResponse(result);
+    }
+
+    private Criteria funnelStepCriteria(String trackingId, Instant from, Instant to,
+                                         EventType eventType, String textFilter) {
+        List<Criteria> ands = new ArrayList<>();
+        ands.add(Criteria.where("trackingId").is(trackingId));
+        ands.add(Criteria.where("eventType").is(eventType));
+        ands.add(Criteria.where("eventTime").gte(from).lte(to));
+        if (textFilter != null) {
+            String quoted = Pattern.quote(textFilter);
+            ands.add(new Criteria().orOperator(
+                    Criteria.where("payload.text").regex(quoted, "i"),
+                    Criteria.where("payload.href").regex(quoted, "i")
+            ));
+        }
+        return new Criteria().andOperator(ands.toArray(new Criteria[0]));
+    }
+
+    private String humanizeEventType(EventType eventType) {
+        return switch (eventType) {
+            case PAGE_VIEW -> "Page view";
+            case BUTTON_CLICK -> "Button click";
+            case LINK_CLICK -> "Link click";
+            case FORM_SUBMIT -> "Form submit";
+            case SCROLL -> "Scroll";
+        };
+    }
+
     public List<SourceStat> getSources(String trackingId, Instant from, Instant to) {
         log.info("getSources: trackingId={} from={} to={}", trackingId, from, to);
         Aggregation agg = Aggregation.newAggregation(
@@ -308,5 +381,46 @@ public class AnalyticDashboardService {
                 .getMappedResults().stream()
                 .map(d -> new DeviceBreakdown(d.getString("_id"), ((Number) d.get("count")).longValue()))
                 .collect(Collectors.toList());
+    }
+
+    public SessionListResponse getSessions(String trackingId, Instant from, Instant to, int limit) {
+        log.info("getSessions: trackingId={} from={} to={} limit={}", trackingId, from, to, limit);
+        Query query = Query.query(Criteria.where("trackingId").is(trackingId)
+                        .and("startedAt").gte(from).lte(to))
+                .with(Sort.by(Sort.Direction.DESC, "startedAt"))
+                .limit(limit);
+
+        List<SessionSummary> summaries = mongoTemplate.find(query, Session.class).stream()
+                .map(this::toSessionSummary)
+                .collect(Collectors.toList());
+
+        return new SessionListResponse(summaries);
+    }
+
+    public SessionDetailResponse getSessionDetail(String trackingId, String sessionId) {
+        log.info("getSessionDetail: trackingId={} sessionId={}", trackingId, sessionId);
+        Session session = mongoTemplate.findOne(
+                Query.query(Criteria.where("trackingId").is(trackingId).and("sessionId").is(sessionId)),
+                Session.class);
+        if (session == null) {
+            throw new ResourceNotFoundException("Session not found");
+        }
+
+        Query eventsQuery = Query.query(Criteria.where("trackingId").is(trackingId).and("sessionId").is(sessionId))
+                .with(Sort.by(Sort.Direction.ASC, "eventTime"));
+        List<SessionTimelineEvent> timeline = mongoTemplate.find(eventsQuery, Event.class).stream()
+                .map(e -> new SessionTimelineEvent(
+                        e.getEventType().name(), e.getPagePath(), e.getPageTitle(), e.getEventTime(), e.getPayload()))
+                .collect(Collectors.toList());
+
+        return new SessionDetailResponse(toSessionSummary(session), timeline);
+    }
+
+    private SessionSummary toSessionSummary(Session s) {
+        return new SessionSummary(
+                s.getSessionId(), s.getVisitorId(), s.getStartedAt(), s.getEndedAt(),
+                s.getLandingPage(), s.getExitPage(), s.getPageViews(), s.getEventCount(),
+                s.getDurationSeconds(), s.getBounced(), s.getBrowser(), s.getOs(), s.getDeviceType()
+        );
     }
 }

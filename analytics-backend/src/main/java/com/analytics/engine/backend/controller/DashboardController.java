@@ -84,6 +84,37 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getDevices(trackingId, Instant.parse(from), Instant.parse(to)));
     }
 
+    @GetMapping("/{trackingId}/funnel")
+    public ResponseEntity<FunnelResponse> getFunnel(
+            @PathVariable String trackingId,
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam List<String> steps) {
+        log.info("GET /api/v1/dashboard/{}/funnel - from={} to={} steps={}", trackingId, from, to, steps);
+        assertOwnership(trackingId);
+        return ResponseEntity.ok(dashboardService.getFunnel(trackingId, Instant.parse(from), Instant.parse(to), steps));
+    }
+
+    @GetMapping("/{trackingId}/sessions")
+    public ResponseEntity<SessionListResponse> getSessions(
+            @PathVariable String trackingId,
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam(defaultValue = "50") int limit) {
+        log.info("GET /api/v1/dashboard/{}/sessions - from={} to={} limit={}", trackingId, from, to, limit);
+        assertOwnership(trackingId);
+        return ResponseEntity.ok(dashboardService.getSessions(trackingId, Instant.parse(from), Instant.parse(to), limit));
+    }
+
+    @GetMapping("/{trackingId}/sessions/{sessionId}")
+    public ResponseEntity<SessionDetailResponse> getSessionDetail(
+            @PathVariable String trackingId,
+            @PathVariable String sessionId) {
+        log.info("GET /api/v1/dashboard/{}/sessions/{}", trackingId, sessionId);
+        assertOwnership(trackingId);
+        return ResponseEntity.ok(dashboardService.getSessionDetail(trackingId, sessionId));
+    }
+
     private void assertOwnership(String trackingId) {
         String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         trackingService.assertOwnership(trackingId, userId);

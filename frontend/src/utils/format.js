@@ -41,3 +41,16 @@ export function formatDateLabel(dateString, granularity = "daily") {
   }
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** Formats an ISO timestamp as a readable local date+time: "Jul 15, 2026, 9:29 AM". */
+export function formatDateTime(isoString) {
+  if (!isoString) return "–";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "–";
+  return dateTimeFormatter.format(date);
+}

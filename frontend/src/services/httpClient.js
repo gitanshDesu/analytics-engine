@@ -36,7 +36,12 @@ export async function backendFetch(
   const url = new URL(`${BACKEND_API_BASE_URL}${path}`);
   if (searchParams) {
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value != null) url.searchParams.set(key, value);
+      if (value == null) continue;
+      if (Array.isArray(value)) {
+        for (const item of value) url.searchParams.append(key, item);
+      } else {
+        url.searchParams.set(key, value);
+      }
     }
   }
 

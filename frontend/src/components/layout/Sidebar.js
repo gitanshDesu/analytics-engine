@@ -7,6 +7,8 @@ import {
   FileText,
   Share2,
   MousePointerClick,
+  Workflow,
+  Users,
   Settings,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -16,10 +18,12 @@ const NAV_ITEMS = [
   { segment: "pages", label: "Pages", icon: FileText },
   { segment: "sources", label: "Sources", icon: Share2 },
   { segment: "events", label: "Events", icon: MousePointerClick },
+  { segment: "funnel", label: "Funnel", icon: Workflow },
+  { segment: "sessions", label: "Sessions", icon: Users },
   { segment: "settings", label: "Settings", icon: Settings },
 ];
 
-/** Property-scoped nav: Overview / Pages / Sources / Events / Settings for one trackingId. */
+/** Property-scoped nav: Overview / Pages / Sources / Events / Funnel / Sessions / Settings for one trackingId. */
 export function Sidebar({ trackingId }) {
   const pathname = usePathname();
 
