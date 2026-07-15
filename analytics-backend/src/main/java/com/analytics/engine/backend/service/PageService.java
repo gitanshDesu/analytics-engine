@@ -40,11 +40,13 @@ public class PageService {
     }
 
     public List<Page> getAllPagesTracked(String trackingId, String userId) {
+        log.info("getAllPagesTracked: trackingId={} userId={}", trackingId, userId);
         trackingService.assertOwnership(trackingId, userId);
         return pageRepo.findByTrackingId(trackingId);
     }
 
     public Page getPageFromId(String pageId, String userId) {
+        log.info("getPageFromId: pageId={} userId={}", pageId, userId);
         Page page = pageRepo.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page Doesn't Exist!"));
         trackingService.assertOwnership(page.getTrackingId(), userId);
         return page;

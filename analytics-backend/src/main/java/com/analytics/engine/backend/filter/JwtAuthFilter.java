@@ -32,10 +32,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (token != null && tokenService.validateAccessToken(token)) {
             String userId = tokenService.extractUserId(token);
             String email = tokenService.extractEmail(token);
+            log.debug("JWT authenticated: userId={} email={} path={}", userId, email, request.getRequestURI());
 
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(userId, email, List.of());
             SecurityContextHolder.getContext().setAuthentication(auth);
+        } else {
+            log.debug("No valid JWT for request: {} {}", request.getMethod(), request.getRequestURI());
         }
 
         filterChain.doFilter(request, response);

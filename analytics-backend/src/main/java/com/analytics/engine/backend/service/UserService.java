@@ -50,10 +50,11 @@ public class UserService {
         //3. Add user (let other properties remain null) (done)
             //a. hash password and add in db (done)
         //4. return user(done)
+        log.info("createUser: email={}", payload.getEmail());
         Optional<User> existingUser = userRepo.findByEmail(payload.getEmail());
 
         if(existingUser.isPresent()){
-            log.warn("User already exists for {}",payload.getEmail());
+            log.warn("User already exists for {}", payload.getEmail());
             throw new UserAlreadyExistsException("User Already Exists!");
         }
 
@@ -71,11 +72,13 @@ public class UserService {
     }
 
     public GenericUserResponse getUserFromId(String userId){
+        log.info("getUserFromId: userId={}", userId);
         User user = userRepo.findById(userId).orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
         return new GenericUserResponse(user.getId(), user.getEmail(), user.getFullName());
     }
 
     public void addTrackingPropertyId(String userId, String trackingPropertyId) {
+        log.info("addTrackingPropertyId: userId={} trackingPropertyId={}", userId, trackingPropertyId);
         User user = userRepo.findById(userId).orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
         if (user.getTrackingPropertyIds() == null) {
             user.setTrackingPropertyIds(new ArrayList<>());

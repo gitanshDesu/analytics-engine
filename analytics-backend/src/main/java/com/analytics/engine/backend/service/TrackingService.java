@@ -38,15 +38,18 @@ public class TrackingService {
     }
 
     public TrackingProperty getByTrackingId(String trackingId) {
+        log.debug("getByTrackingId: trackingId={}", trackingId);
         return trackingPropertyRepo.findByTrackingId(trackingId)
                 .orElseThrow(() -> new ResourceNotFoundException("TrackingProperty not found for trackingId=" + trackingId));
     }
 
     public List<TrackingProperty> getAllByUserId(String userId) {
+        log.info("getAllByUserId: userId={}", userId);
         return trackingPropertyRepo.findAllByUserId(userId);
     }
 
     public void assertOwnership(String trackingId, String userId) {
+        log.debug("assertOwnership: trackingId={} userId={}", trackingId, userId);
         TrackingProperty tp = getByTrackingId(trackingId);
         if (!tp.getUserId().equals(userId)) {
             throw new ForbiddenException("You don't have access to this resource");

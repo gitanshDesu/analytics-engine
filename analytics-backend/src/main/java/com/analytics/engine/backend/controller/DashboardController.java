@@ -3,6 +3,7 @@ package com.analytics.engine.backend.controller;
 import com.analytics.engine.backend.dto.responses.*;
 import com.analytics.engine.backend.service.AnalyticDashboardService;
 import com.analytics.engine.backend.service.TrackingService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
@@ -26,6 +28,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        log.info("GET /api/v1/dashboard/{}/summary - from={} to={}", trackingId, from, to);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getSummary(trackingId, Instant.parse(from), Instant.parse(to)));
     }
@@ -36,6 +39,7 @@ public class DashboardController {
             @RequestParam String from,
             @RequestParam String to,
             @RequestParam(defaultValue = "daily") String granularity) {
+        log.info("GET /api/v1/dashboard/{}/traffic - from={} to={} granularity={}", trackingId, from, to, granularity);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getTrafficOverTime(trackingId, Instant.parse(from), Instant.parse(to), granularity));
     }
@@ -45,6 +49,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        log.info("GET /api/v1/dashboard/{}/pages - from={} to={}", trackingId, from, to);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getPages(trackingId, Instant.parse(from), Instant.parse(to)));
     }
@@ -54,6 +59,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        log.info("GET /api/v1/dashboard/{}/events - from={} to={}", trackingId, from, to);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getEvents(trackingId, Instant.parse(from), Instant.parse(to)));
     }
@@ -63,6 +69,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        log.info("GET /api/v1/dashboard/{}/sources - from={} to={}", trackingId, from, to);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getSources(trackingId, Instant.parse(from), Instant.parse(to)));
     }
@@ -72,6 +79,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        log.info("GET /api/v1/dashboard/{}/devices - from={} to={}", trackingId, from, to);
         assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getDevices(trackingId, Instant.parse(from), Instant.parse(to)));
     }

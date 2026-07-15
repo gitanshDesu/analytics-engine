@@ -28,6 +28,7 @@ public class VisitorService {
 
     // Returns existing visitor or creates one if this is their first session
     public Visitor getOrCreateVisitor(String visitorId, Instant firstSeen) {
+        log.debug("getOrCreateVisitor: visitorId={}", visitorId);
         Visitor visitor = visitorRepo.findByVisitorId(visitorId)
                 .orElseGet(() -> createVisitor(visitorId, firstSeen));
         visitor.setTotalSessions(visitor.getTotalSessions() + 1);
@@ -40,6 +41,7 @@ public class VisitorService {
     }
 
     public void updateLastSeen(String visitorId, Instant lastSeen) {
+        log.debug("updateLastSeen: visitorId={} lastSeen={}", visitorId, lastSeen);
         Visitor visitor = getVisitorFromId(visitorId);
         visitor.setLastSeen(lastSeen);
         visitorRepo.save(visitor);

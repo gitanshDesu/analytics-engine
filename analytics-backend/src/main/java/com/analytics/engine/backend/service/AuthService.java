@@ -32,12 +32,15 @@ public class AuthService {
     private TokenService tokenService;
 
     public GenericUserResponse register(CreateUserRequest payload, HttpServletResponse response) {
+        log.info("Registering new user: email={}", payload.getEmail());
         User newUser = userService.createUser(payload);
         issueTokens(newUser, response);
+        log.info("User registered successfully: userId={} email={}", newUser.getId(), newUser.getEmail());
         return toResponse(newUser);
     }
 
     public GenericUserResponse login(GenericUserRequest payload, HttpServletResponse response) {
+        log.info("Login attempt: email={}", payload.getEmail());
         User user = userRepo.findByEmail(payload.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
 
@@ -46,6 +49,7 @@ public class AuthService {
         }
 
         issueTokens(user, response);
+        log.info("Login successful: userId={} email={}", user.getId(), user.getEmail());
         return toResponse(user);
     }
 
@@ -62,11 +66,13 @@ public class AuthService {
         }
         String userId = parts[0];
 
+        log.info("Token refresh: userId={}", userId);
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
 
         if (!tokenService.verifyRefreshToken(rawRefreshToken, user.getRefreshToken())) {
             // Token mismatch — possible replay attack; invalidate stored token
+            log.warn("Refresh token mismatch — possible replay attack: userId={}", userId);
             user.setRefreshToken(null);
             userRepo.save(user);
             throw new InvalidCredentialsException("Invalid refresh token");
@@ -81,6 +87,7 @@ public class AuthService {
         if (rawRefreshToken != null) {
             String[] parts = rawRefreshToken.split(":", 2);
             if (parts.length == 2) {
+                log.info("Logout: userId={}", parts[0]);
                 userRepo.findById(parts[0]).ifPresent(user -> {
                     user.setRefreshToken(null);
                     userRepo.save(user);

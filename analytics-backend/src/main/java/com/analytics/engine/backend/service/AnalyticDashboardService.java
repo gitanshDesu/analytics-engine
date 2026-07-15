@@ -34,6 +34,7 @@ public class AnalyticDashboardService {
     private static final int TOP_N = 10;
 
     public SummaryResponse getSummary(String trackingId, Instant from, Instant to) {
+        log.info("getSummary: trackingId={} from={} to={}", trackingId, from, to);
         Criteria baseCriteria = Criteria.where("trackingId").is(trackingId)
                 .and("startedAt").gte(from).lte(to);
 
@@ -93,6 +94,7 @@ public class AnalyticDashboardService {
     }
 
     public List<TrafficDataPoint> getTrafficOverTime(String trackingId, Instant from, Instant to, String granularity) {
+        log.info("getTrafficOverTime: trackingId={} from={} to={} granularity={}", trackingId, from, to, granularity);
         String dateFormat = "weekly".equalsIgnoreCase(granularity) ? "%Y-%U" : "%Y-%m-%d";
 
         AggregationOperation projectDate = ctx -> new Document("$project",
@@ -121,6 +123,7 @@ public class AnalyticDashboardService {
     }
 
     public PagesResponse getPages(String trackingId, Instant from, Instant to) {
+        log.info("getPages: trackingId={} from={} to={}", trackingId, from, to);
         // Top pages by PAGE_VIEW events
         Aggregation topPagesAgg = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("trackingId").is(trackingId)
@@ -166,6 +169,7 @@ public class AnalyticDashboardService {
     }
 
     public EventsResponse getEvents(String trackingId, Instant from, Instant to) {
+        log.info("getEvents: trackingId={} from={} to={}", trackingId, from, to);
 
         Criteria baseCriteria = Criteria.where("trackingId").is(trackingId)
                 .and("eventTime").gte(from).lte(to);
@@ -265,6 +269,7 @@ public class AnalyticDashboardService {
     }
 
     public List<SourceStat> getSources(String trackingId, Instant from, Instant to) {
+        log.info("getSources: trackingId={} from={} to={}", trackingId, from, to);
         Aggregation agg = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("trackingId").is(trackingId)
                         .and("startedAt").gte(from).lte(to)),
@@ -282,6 +287,7 @@ public class AnalyticDashboardService {
     }
 
     public DevicesResponse getDevices(String trackingId, Instant from, Instant to) {
+        log.info("getDevices: trackingId={} from={} to={}", trackingId, from, to);
         Criteria match = Criteria.where("trackingId").is(trackingId)
                 .and("startedAt").gte(from).lte(to);
 
