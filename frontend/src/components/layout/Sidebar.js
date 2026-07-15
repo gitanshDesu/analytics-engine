@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FileText,
   Share2,
+  MousePointerClick,
   Settings,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -14,10 +15,11 @@ const NAV_ITEMS = [
   { segment: "overview", label: "Overview", icon: LayoutDashboard },
   { segment: "pages", label: "Pages", icon: FileText },
   { segment: "sources", label: "Sources", icon: Share2 },
+  { segment: "events", label: "Events", icon: MousePointerClick },
   { segment: "settings", label: "Settings", icon: Settings },
 ];
 
-/** Property-scoped nav: Overview / Pages / Sources / Settings for one trackingId. */
+/** Property-scoped nav: Overview / Pages / Sources / Events / Settings for one trackingId. */
 export function Sidebar({ trackingId }) {
   const pathname = usePathname();
 

@@ -1,23 +1,30 @@
 "use client";
 
+import { useActionState } from "react";
 import { AddSiteForm } from "@/components/tracking/AddSiteForm";
 import { SnippetStep } from "@/components/tracking/SnippetStep";
-import { useAddSiteFlow } from "@/components/tracking/hooks/useAddSiteFlow";
+import { createTrackingPropertyAction } from "@/actions/tracking/createTrackingProperty";
+
+const initialState = {};
 
 /** Two-step "add a site" wizard: domain form, then the install snippet. */
 export function AddSiteFlow() {
-  const { step, trackingId, isSubmitting, error, createSite } =
-    useAddSiteFlow();
+  const [state, formAction, isPending] = useActionState(
+    createTrackingPropertyAction,
+    initialState
+  );
 
-  if (step === "snippet") {
-    return <SnippetStep trackingId={trackingId} />;
+  if (state.trackingId) {
+    return (
+      <SnippetStep
+        trackingId={state.trackingId}
+        apiBase={state.apiBase}
+        sdkUrl={state.sdkUrl}
+      />
+    );
   }
 
   return (
-    <AddSiteForm
-      isSubmitting={isSubmitting}
-      error={error}
-      onSubmit={createSite}
-    />
+    <AddSiteForm formAction={formAction} error={state.error} isPending={isPending} />
   );
 }

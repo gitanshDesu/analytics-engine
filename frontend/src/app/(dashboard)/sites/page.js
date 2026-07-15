@@ -1,13 +1,15 @@
+import { cookies } from "next/headers";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SiteCard } from "@/components/tracking/SiteCard";
-import { MOCK_PROPERTIES } from "@/mocks/properties";
+import { listTrackingProperties } from "@/services/tracking/listTrackingProperties";
 
 export const metadata = { title: "Sites — Analytics Engine" };
 
-export default function SitesPage() {
-  const properties = MOCK_PROPERTIES;
+export default async function SitesPage() {
+  const accessToken = (await cookies()).get("accessToken")?.value;
+  const { data: properties } = await listTrackingProperties({ accessToken });
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-10">

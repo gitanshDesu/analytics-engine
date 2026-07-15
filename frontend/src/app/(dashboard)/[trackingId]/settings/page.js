@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import {
   Card,
   CardHeader,
@@ -7,18 +8,21 @@ import {
 } from "@/components/ui/Card";
 import { SnippetBlock } from "@/components/tracking/SnippetBlock";
 import { DomainsEditor } from "@/components/tracking/DomainsEditor";
+import { PagesEditor } from "@/components/tracking/PagesEditor";
 import { DangerZone } from "@/components/tracking/DangerZone";
-import { MOCK_PROPERTIES } from "@/mocks/properties";
+import { getTrackingProperty } from "@/services/tracking/getTrackingProperty";
+import { listPages } from "@/services/pages/listPages";
 
 export const metadata = { title: "Settings — Analytics Engine" };
 
-// TODO(Phase 3): look up the property by trackingId via services/tracking
-// instead of scanning the mock fixture.
 export default async function SettingsPage({ params }) {
   const { trackingId } = await params;
-  const property =
-    MOCK_PROPERTIES.find((p) => p.trackingId === trackingId) ??
-    MOCK_PROPERTIES[0];
+  const accessToken = (await cookies()).get("accessToken")?.value;
+
+  const [{ data: property }, { data: pages }] = await Promise.all([
+    getTrackingProperty(trackingId, { accessToken }),
+    listPages(trackingId, { accessToken }),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-6 py-6">
@@ -32,7 +36,11 @@ export default async function SettingsPage({ params }) {
           </div>
         </CardHeader>
         <CardContent>
-          <SnippetBlock trackingId={trackingId} />
+          <SnippetBlock
+            trackingId={trackingId}
+            apiBase={process.env.BACKEND_API_BASE_URL}
+            sdkUrl={process.env.SDK_SCRIPT_URL}
+          />
         </CardContent>
       </Card>
 
@@ -46,7 +54,21 @@ export default async function SettingsPage({ params }) {
           </div>
         </CardHeader>
         <CardContent>
-          <DomainsEditor initialDomains={[property.domain]} />
+          <DomainsEditor initialDomains={property.domains} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Tracked pages</CardTitle>
+            <CardDescription>
+              Categorize pages for the pages/analytics breakdowns.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <PagesEditor trackingId={trackingId} pages={pages} />
         </CardContent>
       </Card>
 
@@ -55,7 +77,7 @@ export default async function SettingsPage({ params }) {
           <CardTitle>Danger zone</CardTitle>
         </CardHeader>
         <CardContent>
-          <DangerZone siteName={property.name} />
+          <DangerZone siteName={property.domains?.[0] ?? trackingId} />
         </CardContent>
       </Card>
     </div>

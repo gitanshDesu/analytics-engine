@@ -4,10 +4,15 @@ import { Copy, Check } from "lucide-react";
 import { useClipboard } from "@/hooks/useClipboard";
 import { buildSnippet } from "@/components/tracking/utils/buildSnippet";
 
-/** Copyable install snippet for a tracking property, shared by onboarding and Settings. */
-export function SnippetBlock({ trackingId }) {
+/**
+ * Copyable install snippet for a tracking property, shared by onboarding and
+ * Settings. `apiBase`/`sdkUrl` must be threaded in as props from server-side
+ * code (BACKEND_API_BASE_URL/SDK_SCRIPT_URL aren't NEXT_PUBLIC_ vars, so this
+ * client component can't read them from process.env itself).
+ */
+export function SnippetBlock({ trackingId, apiBase, sdkUrl }) {
   const { isCopied, copy } = useClipboard();
-  const snippet = buildSnippet(trackingId);
+  const snippet = buildSnippet(trackingId, apiBase, sdkUrl);
 
   return (
     <div className="relative rounded-lg border border-border bg-bg">

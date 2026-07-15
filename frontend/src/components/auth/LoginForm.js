@@ -1,53 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { Field, Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
-import { useAuthForm } from "@/components/auth/hooks/useAuthForm";
+import { loginAction } from "@/actions/auth/login";
 
-// TODO(Phase 3): replace with a call into actions/auth (POST /api/v1/auth/login via proxy).
-async function mockLogin(values) {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  if (!values.email || !values.password) {
-    throw new Error("Enter your email and password.");
-  }
-}
+const initialState = { error: null };
 
 export function LoginForm() {
-  const router = useRouter();
-  const { values, setValue, isSubmitting, error, handleSubmit } = useAuthForm(
-    { email: "", password: "" },
-    async (formValues) => {
-      await mockLogin(formValues);
-      router.push("/sites");
-    }
-  );
+  const [state, formAction, isPending] = useActionState(loginAction, initialState);
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
       <Field label="Email" htmlFor="email">
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={values.email}
-          onChange={(e) => setValue("email", e.target.value)}
-        />
+        <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label="Password" htmlFor="password">
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
+          name="password"
           autoComplete="current-password"
-          value={values.password}
-          onChange={(e) => setValue("password", e.target.value)}
+          required
         />
       </Field>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-1">
-        {isSubmitting ? "Logging in…" : "Log in"}
+      <Button type="submit" disabled={isPending} className="mt-1">
+        {isPending ? "Logging in…" : "Log in"}
       </Button>
     </form>
   );

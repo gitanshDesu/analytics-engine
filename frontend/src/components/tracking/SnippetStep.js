@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { SnippetBlock } from "@/components/tracking/SnippetBlock";
 
 /** Step 2 of the add-site flow: install snippet + a placeholder "waiting for data" state. */
-export function SnippetStep({ trackingId }) {
+export function SnippetStep({ trackingId, apiBase, sdkUrl }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
@@ -15,7 +15,7 @@ export function SnippetStep({ trackingId }) {
         </p>
       </div>
 
-      <SnippetBlock trackingId={trackingId} />
+      <SnippetBlock trackingId={trackingId} apiBase={apiBase} sdkUrl={sdkUrl} />
 
       <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-hover px-3 py-2.5 text-sm text-muted">
         <Loader2 size={14} className="animate-spin text-subtle" />

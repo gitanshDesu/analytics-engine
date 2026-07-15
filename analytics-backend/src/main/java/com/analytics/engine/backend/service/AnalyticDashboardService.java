@@ -162,6 +162,91 @@ public class AnalyticDashboardService {
         return new PagesResponse(topPages, topLandingPages, topExitPages);
     }
 
+    public EventsResponse getEvents(String trackingId, Instant from, Instant to) {
+
+        Criteria baseCriteria = Criteria.where("trackingId").is(trackingId)
+                .and("eventTime").gte(from).lte(to);
+
+        // Breakdown by event type (PAGE_VIEW, BUTTON_CLICK, LINK_CLICK, SCROLL, FORM_SUBMIT)
+        List<DeviceBreakdown> eventTypeBreakdown = groupEventsByField(
+                "eventType",
+                baseCriteria,
+                Sort.Direction.DESC,
+                TOP_N
+        );
+
+        long totalEvents = eventTypeBreakdown.stream()
+                .mapToLong(DeviceBreakdown::getCount)
+                .sum();
+
+        List<DeviceBreakdown> topLinkClicks = groupEventsByField(
+                "payload.href",
+                eventCriteria(trackingId, from, to, EventType.LINK_CLICK),
+                Sort.Direction.DESC,
+                TOP_N
+        );
+
+        List<DeviceBreakdown> topButtonClicks = groupEventsByField(
+                "payload.text",
+                eventCriteria(trackingId, from, to, EventType.BUTTON_CLICK),
+                Sort.Direction.DESC,
+                TOP_N
+        );
+
+        List<DeviceBreakdown> topFormSubmits = groupEventsByField(
+                "payload.action",
+                eventCriteria(trackingId, from, to, EventType.FORM_SUBMIT),
+                Sort.Direction.DESC,
+                TOP_N
+        );
+
+        // Sorted by depth ascending (25/50/75/100), not by count, so it reads as a funnel.
+        List<DeviceBreakdown> scrollDepthBreakdown = groupEventsByField(
+                "payload.depth",
+                eventCriteria(trackingId, from, to, EventType.SCROLL),
+                Sort.Direction.ASC,
+                Integer.MAX_VALUE
+        );
+
+        return new EventsResponse(
+                totalEvents,
+                eventTypeBreakdown,
+                topLinkClicks,
+                topButtonClicks,
+                topFormSubmits,
+                scrollDepthBreakdown
+        );
+    }
+
+    private Criteria eventCriteria(String trackingId,
+                                   Instant from,
+                                   Instant to,
+                                   EventType eventType) {
+
+        return new Criteria().andOperator(
+                Criteria.where("trackingId").is(trackingId),
+                Criteria.where("eventTime").gte(from).lte(to),
+                Criteria.where("eventType").is(eventType)
+        );
+    }
+
+    private List<DeviceBreakdown> groupEventsByField(String field, Criteria match, Sort.Direction sortDirection, int limit) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(match),
+                Aggregation.group(field).count().as("count"),
+                Aggregation.sort(sortDirection, sortDirection == Sort.Direction.ASC ? "_id" : "count"),
+                Aggregation.limit(limit)
+        );
+        return mongoTemplate.aggregate(agg, "events", Document.class)
+                .getMappedResults().stream()
+                .map(d -> {
+                    Object rawLabel = d.get("_id");
+                    String label = rawLabel != null ? String.valueOf(rawLabel) : "(unknown)";
+                    return new DeviceBreakdown(label, ((Number) d.get("count")).longValue());
+                })
+                .collect(Collectors.toList());
+    }
+
     public List<SourceStat> getSources(String trackingId, Instant from, Instant to) {
         Aggregation agg = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("trackingId").is(trackingId)

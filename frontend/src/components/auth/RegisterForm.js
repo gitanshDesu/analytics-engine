@@ -1,64 +1,48 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { Field, Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
-import { useAuthForm } from "@/components/auth/hooks/useAuthForm";
+import { registerAction } from "@/actions/auth/register";
 
-// TODO(Phase 3): replace with a call into actions/auth (POST /api/v1/auth/register via proxy).
-async function mockRegister(values) {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  if (!values.fullName || !values.email || !values.password) {
-    throw new Error("Fill in every field to continue.");
-  }
-  if (values.password.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
-  }
-}
+const initialState = { error: null };
 
 export function RegisterForm() {
-  const router = useRouter();
-  const { values, setValue, isSubmitting, error, handleSubmit } = useAuthForm(
-    { fullName: "", email: "", password: "" },
-    async (formValues) => {
-      await mockRegister(formValues);
-      router.push("/sites/new");
-    }
+  const [state, formAction, isPending] = useActionState(
+    registerAction,
+    initialState
   );
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
       <Field label="Full name" htmlFor="fullName">
-        <Input
-          id="fullName"
-          autoComplete="name"
-          value={values.fullName}
-          onChange={(e) => setValue("fullName", e.target.value)}
-        />
+        <Input id="fullName" name="fullName" autoComplete="name" required />
       </Field>
       <Field label="Email" htmlFor="email">
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={values.email}
-          onChange={(e) => setValue("email", e.target.value)}
-        />
+        <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
-      <Field label="Password" htmlFor="password">
-        <Input
+      <Field
+        label="Password"
+        htmlFor="password"
+        error={undefined}
+      >
+        <PasswordInput
           id="password"
-          type="password"
+          name="password"
           autoComplete="new-password"
-          value={values.password}
-          onChange={(e) => setValue("password", e.target.value)}
+          required
         />
+        <p className="mt-1 text-xs text-subtle">
+          At least 8 characters, with a digit, an uppercase and lowercase
+          letter, and a special character.
+        </p>
       </Field>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-1">
-        {isSubmitting ? "Creating account…" : "Create account"}
+      <Button type="submit" disabled={isPending} className="mt-1">
+        {isPending ? "Creating account…" : "Create account"}
       </Button>
     </form>
   );

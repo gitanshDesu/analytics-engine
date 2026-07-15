@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Check, Plus, Globe } from "lucide-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { getPropertyLabel } from "@/components/tracking/utils/getPropertyLabel";
 import { cn } from "@/utils/cn";
 
 /**
  * Dropdown for switching between the user's tracking properties ("sites").
- * `properties`: [{ trackingId, name, domain }]
+ * `properties`: TrackingProperty[] ({ trackingId, domains, ... }).
  *
  * The active property is read from the URL (first path segment) rather than
  * passed as a prop — Topbar renders from `(dashboard)/layout.js`, which sits
@@ -30,7 +31,7 @@ export function PropertySwitcher({ properties }) {
       >
         <Globe size={14} className="text-subtle" />
         <span className="font-medium text-ink">
-          {active?.name ?? "Select a site"}
+          {active ? getPropertyLabel(active).primary : "Select a site"}
         </span>
         <ChevronsUpDown size={14} className="text-subtle" />
       </button>
@@ -39,6 +40,7 @@ export function PropertySwitcher({ properties }) {
         <div className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-lg border border-border bg-surface py-1 shadow-(--shadow-card)">
           {properties.map((property) => {
             const isActive = property.trackingId === activeTrackingId;
+            const { primary, secondary } = getPropertyLabel(property);
             return (
               <Link
                 key={property.trackingId}
@@ -50,8 +52,10 @@ export function PropertySwitcher({ properties }) {
                 )}
               >
                 <span className="flex flex-col">
-                  <span className="font-medium">{property.name}</span>
-                  <span className="text-xs text-subtle">{property.domain}</span>
+                  <span className="font-medium">{primary}</span>
+                  <span className="text-xs text-subtle">
+                    {secondary ?? property.trackingId}
+                  </span>
                 </span>
                 {isActive && <Check size={14} className="text-accent" />}
               </Link>

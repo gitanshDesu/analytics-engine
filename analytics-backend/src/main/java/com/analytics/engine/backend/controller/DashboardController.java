@@ -49,6 +49,15 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getPages(trackingId, Instant.parse(from), Instant.parse(to)));
     }
 
+    @GetMapping("/{trackingId}/events")
+    public ResponseEntity<EventsResponse> getEvents(
+            @PathVariable String trackingId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        assertOwnership(trackingId);
+        return ResponseEntity.ok(dashboardService.getEvents(trackingId, Instant.parse(from), Instant.parse(to)));
+    }
+
     @GetMapping("/{trackingId}/sources")
     public ResponseEntity<List<SourceStat>> getSources(
             @PathVariable String trackingId,

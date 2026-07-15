@@ -5,13 +5,14 @@ import { TrafficChart } from "@/components/dashboard/TrafficChart";
 import { PagesPanel } from "@/components/dashboard/PagesPanel";
 import { SourcesPanel } from "@/components/dashboard/SourcesPanel";
 import { DevicesPanel } from "@/components/dashboard/DevicesPanel";
+import { EventsPanel } from "@/components/dashboard/EventsPanel";
 
 /**
- * Composes one property's dashboard from the five `AnalyticDashboardService`
+ * Composes one property's dashboard from the six `AnalyticDashboardService`
  * responses. Every prop mirrors a backend DTO shape 1:1 so Phase 3 can swap
  * mock data for real fetches without touching this layout.
  */
-export function OverviewDashboard({ summary, traffic, pages, sources, devices }) {
+export function OverviewDashboard({ summary, traffic, pages, sources, devices, events }) {
   return (
     <div className="flex flex-col gap-5 px-6 py-6">
       <div className="flex items-center justify-between">
@@ -56,6 +57,16 @@ export function OverviewDashboard({ summary, traffic, pages, sources, devices })
           <CardTitle>Devices</CardTitle>
         </CardHeader>
         <DevicesPanel devices={devices} />
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Events</CardTitle>
+            <CardDescription>What visitors clicked, submitted, and scrolled</CardDescription>
+          </div>
+        </CardHeader>
+        <EventsPanel events={events} />
       </Card>
     </div>
   );
