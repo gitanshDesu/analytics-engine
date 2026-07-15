@@ -6,6 +6,7 @@ import com.analytics.engine.backend.service.PageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,16 +20,19 @@ public class PageController {
 
     @PostMapping
     public ResponseEntity<Page> addPage(@RequestBody AddPageRequest request) {
-        return new ResponseEntity<>(pageService.addAPageToTrack(request), HttpStatus.CREATED);
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return new ResponseEntity<>(pageService.addAPageToTrack(request, userId), HttpStatus.CREATED);
     }
 
     @GetMapping("/{pageId}")
     public ResponseEntity<Page> getPage(@PathVariable String pageId) {
-        return new ResponseEntity<>(pageService.getPageFromId(pageId), HttpStatus.OK);
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return new ResponseEntity<>(pageService.getPageFromId(pageId, userId), HttpStatus.OK);
     }
 
     @GetMapping
     public ResponseEntity<List<Page>> getAllPages(@RequestParam String trackingId) {
-        return new ResponseEntity<>(pageService.getAllPagesTracked(trackingId), HttpStatus.OK);
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return new ResponseEntity<>(pageService.getAllPagesTracked(trackingId, userId), HttpStatus.OK);
     }
 }

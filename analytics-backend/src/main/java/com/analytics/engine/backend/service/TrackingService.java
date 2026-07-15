@@ -1,5 +1,6 @@
 package com.analytics.engine.backend.service;
 
+import com.analytics.engine.backend.exception.ForbiddenException;
 import com.analytics.engine.backend.exception.ResourceNotFoundException;
 import com.analytics.engine.backend.model.TrackingProperty;
 import com.analytics.engine.backend.repo.TrackingPropertyRepo;
@@ -43,6 +44,13 @@ public class TrackingService {
 
     public List<TrackingProperty> getAllByUserId(String userId) {
         return trackingPropertyRepo.findAllByUserId(userId);
+    }
+
+    public void assertOwnership(String trackingId, String userId) {
+        TrackingProperty tp = getByTrackingId(trackingId);
+        if (!tp.getUserId().equals(userId)) {
+            throw new ForbiddenException("You don't have access to this resource");
+        }
     }
 
     public void addPageIdToTrackingProperty(String trackingPropertyId, String pageId) {

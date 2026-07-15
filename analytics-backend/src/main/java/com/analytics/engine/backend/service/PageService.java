@@ -21,7 +21,9 @@ public class PageService {
     @Autowired
     private PageRepo pageRepo;
 
-    public Page addAPageToTrack(AddPageRequest payload) {
+    public Page addAPageToTrack(AddPageRequest payload, String userId) {
+        trackingService.assertOwnership(payload.getTrackingId(), userId);
+
         TrackingProperty trackingProperty = trackingService.getByTrackingId(payload.getTrackingId());
 
         Page page = new Page();
@@ -37,11 +39,14 @@ public class PageService {
         return savedPage;
     }
 
-    public List<Page> getAllPagesTracked(String trackingId) {
+    public List<Page> getAllPagesTracked(String trackingId, String userId) {
+        trackingService.assertOwnership(trackingId, userId);
         return pageRepo.findByTrackingId(trackingId);
     }
 
-    public Page getPageFromId(String pageId) {
-        return pageRepo.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page Doesn't Exist!"));
+    public Page getPageFromId(String pageId, String userId) {
+        Page page = pageRepo.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page Doesn't Exist!"));
+        trackingService.assertOwnership(page.getTrackingId(), userId);
+        return page;
     }
 }

@@ -22,7 +22,8 @@ public class EventService {
     private SessionRepo sessionRepo;
 
     public Event createEvent(EventRequest request) {
-        //Todo: Add verification logic to check if trackingId belongs to userId in cookie (protected route)
+        // TODO: Validate that trackingId exists in the database — reject unknown IDs to prevent data spoofing
+        // TODO: Validate Origin/Referer header against registered domains for this trackingId to block cross-site spoofing
 
         Session session = sessionRepo.findBySessionIdAndVisitorId(request.getSessionId(), request.getVisitorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found for sessionId=" + request.getSessionId()));

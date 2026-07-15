@@ -6,6 +6,7 @@ import com.analytics.engine.backend.service.TrackingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,20 +20,20 @@ public class TrackingController {
 
     @PostMapping
     public ResponseEntity<TrackingProperty> createTrackingProperty(@RequestBody CreateTrackingPropertyRequest request) {
-        //Todo: Get userId from cookie
-        String userId = null;
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return new ResponseEntity<>(trackingService.createTrackingProperty(userId, request.getDomains()), HttpStatus.CREATED);
     }
 
     @GetMapping("/{trackingId}")
     public ResponseEntity<TrackingProperty> getTrackingProperty(@PathVariable String trackingId) {
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        trackingService.assertOwnership(trackingId, userId);
         return new ResponseEntity<>(trackingService.getByTrackingId(trackingId), HttpStatus.OK);
     }
 
     @GetMapping
     public ResponseEntity<List<TrackingProperty>> getAllTrackingProperties() {
-        //Todo: Get userId from cookie
-        String userId = null;
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return new ResponseEntity<>(trackingService.getAllByUserId(userId), HttpStatus.OK);
     }
 }

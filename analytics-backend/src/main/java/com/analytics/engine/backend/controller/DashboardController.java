@@ -2,8 +2,10 @@ package com.analytics.engine.backend.controller;
 
 import com.analytics.engine.backend.dto.responses.*;
 import com.analytics.engine.backend.service.AnalyticDashboardService;
+import com.analytics.engine.backend.service.TrackingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -16,11 +18,15 @@ public class DashboardController {
     @Autowired
     private AnalyticDashboardService dashboardService;
 
+    @Autowired
+    private TrackingService trackingService;
+
     @GetMapping("/{trackingId}/summary")
     public ResponseEntity<SummaryResponse> getSummary(
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getSummary(trackingId, Instant.parse(from), Instant.parse(to)));
     }
 
@@ -30,6 +36,7 @@ public class DashboardController {
             @RequestParam String from,
             @RequestParam String to,
             @RequestParam(defaultValue = "daily") String granularity) {
+        assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getTrafficOverTime(trackingId, Instant.parse(from), Instant.parse(to), granularity));
     }
 
@@ -38,6 +45,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getPages(trackingId, Instant.parse(from), Instant.parse(to)));
     }
 
@@ -46,6 +54,7 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getSources(trackingId, Instant.parse(from), Instant.parse(to)));
     }
 
@@ -54,6 +63,12 @@ public class DashboardController {
             @PathVariable String trackingId,
             @RequestParam String from,
             @RequestParam String to) {
+        assertOwnership(trackingId);
         return ResponseEntity.ok(dashboardService.getDevices(trackingId, Instant.parse(from), Instant.parse(to)));
+    }
+
+    private void assertOwnership(String trackingId) {
+        String userId = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        trackingService.assertOwnership(trackingId, userId);
     }
 }

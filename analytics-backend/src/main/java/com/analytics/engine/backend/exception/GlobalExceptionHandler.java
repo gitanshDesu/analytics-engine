@@ -88,6 +88,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    //catch forbidden access (403: forbidden)
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex, HttpServletRequest request){
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(buildErrorResponse(
+                        HttpStatus.FORBIDDEN,
+                        ex.getMessage(),
+                        request,
+                        null
+                ));
+    }
+
     //catch unexpected exceptions (500: internal server error)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
