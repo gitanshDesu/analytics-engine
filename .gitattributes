@@ -1,0 +1,2 @@
+# Stop tracking JavaScript in language statistics
+*.js linguist-detectable=false
