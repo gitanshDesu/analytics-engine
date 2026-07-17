@@ -328,7 +328,7 @@
 
   /** @param {MouseEvent} e */
   const handleClick = (e) => {
-    const interactiveTarget = e.target.closest?.('a[href], button, [type="submit"], [role="button"]');
+    const interactiveTarget = e.target.closest?.('a[href], div, button, [type="submit"], [role="button"]');
     if (!interactiveTarget) return;
 
     let eventType;
