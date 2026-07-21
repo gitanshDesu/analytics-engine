@@ -8,6 +8,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.TimeSeries;
+import org.springframework.data.mongodb.core.timeseries.Granularity;
 
 import java.time.Instant;
 import java.util.Map;
@@ -22,7 +24,8 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "events")
+//@Document(collection = "events")
+@TimeSeries(collection = "events", timeField = "eventTime",metaField = "trackingId", granularity = Granularity.SECONDS)
 public class Event {
     @Id
     private String id;

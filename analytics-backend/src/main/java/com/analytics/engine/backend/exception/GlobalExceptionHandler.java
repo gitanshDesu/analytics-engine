@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     //catch invalid credentials (401 : unauthorized)
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request){
-        log.warn("Invalid credentials attempt [{}]: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Invalid credentials attempt [{}]: {}", request.getRequestURI(), ex.getMessage(),ex);
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(buildErrorResponse(
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
     //catch user already exists exception (409 : conflict)
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex, HttpServletRequest request){
-        log.warn("User already exists [{}]: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("User already exists [{}]: {}", request.getRequestURI(), ex.getMessage(),ex);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(buildErrorResponse(
@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
     //catches all resource not found exception: throws 404
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request){
-        log.warn("Resource not found [{}]: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Resource not found [{}]: {}", request.getRequestURI(), ex.getMessage(),ex);
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(buildErrorResponse(
