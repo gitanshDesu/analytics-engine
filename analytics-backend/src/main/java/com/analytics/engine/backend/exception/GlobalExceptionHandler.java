@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 
 @RestControllerAdvice
@@ -50,7 +51,7 @@ public class GlobalExceptionHandler {
     //catch user not found errors (for an email or id) throws 404
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex, HttpServletRequest request){
-        log.warn("User not found [{}]: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("User not found [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(buildErrorResponse(

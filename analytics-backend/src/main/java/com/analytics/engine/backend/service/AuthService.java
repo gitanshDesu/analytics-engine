@@ -40,8 +40,9 @@ public class AuthService {
     }
 
     public GenericUserResponse login(GenericUserRequest payload, HttpServletResponse response) {
-        log.info("Login attempt: email={}", payload.getEmail());
-        User user = userRepo.findByEmail(payload.getEmail())
+        String email = payload.getEmail().trim().toLowerCase();
+        log.info("Login attempt: email={}", email);
+        User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User Doesn't Exist!"));
 
         if (!passwordUtil.checkPassword(payload.getPassword(), user.getPassword())) {

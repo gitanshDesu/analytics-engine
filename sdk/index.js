@@ -28,6 +28,7 @@
   const SESSION_START_URL = `${API_BASE_URL}/api/v1/session/start`;
   const SESSION_END_URL = `${API_BASE_URL}/api/v1/session/end`;
   const EVENT_REGISTER_URL = `${API_BASE_URL}/api/v1/event/register`;
+  const EVENT_REGISTER_BATCH_URL = `${API_BASE_URL}/api/v1/event/register/batch`;
 
   const STORAGE_KEY_VISITOR = '_ae_visitor';
   const STORAGE_KEY_SESSION = '_ae_session';
@@ -242,24 +243,17 @@
   };
 
   // ==== outgoing event queue ===============================================
-  // TODO(backend): /api/v1/event/register only accepts a single EventRequest, so this
-  // queue can only smooth *flush timing* client-side — every queued item still becomes
-  // its own HTTP call. Real batching needs a backend batch endpoint (e.g. EventRequest[])
-  // backed by a message queue (Kafka/SQS/RabbitMQ) so the SDK can hand off N events in
-  // one call and the backend fans them out asynchronously.
 
   const eventQueue = [];
 
   /**
-   * Sends every currently queued event and empties the queue.
+   * Sends every currently queued event as one batch request and empties the queue.
    * @param {boolean} useBeacon - Use sendBeacon instead of fetch (for unload/tab-hide flushes).
    */
   const flushEventQueue = (useBeacon) => {
     if (!eventQueue.length) return;
     const items = eventQueue.splice(0, eventQueue.length);
-    for (const item of items) {
-      useBeacon ? postJsonBeacon(EVENT_REGISTER_URL, item) : postJson(EVENT_REGISTER_URL, item);
-    }
+    useBeacon ? postJsonBeacon(EVENT_REGISTER_BATCH_URL, items) : postJson(EVENT_REGISTER_BATCH_URL, items);
   };
 
   /**

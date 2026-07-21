@@ -50,18 +50,19 @@ public class UserService {
         //3. Add user (let other properties remain null) (done)
             //a. hash password and add in db (done)
         //4. return user(done)
-        log.info("createUser: email={}", payload.getEmail());
-        Optional<User> existingUser = userRepo.findByEmail(payload.getEmail());
+        String email = payload.getEmail().trim().toLowerCase();
+        log.info("createUser: email={}", email);
+        Optional<User> existingUser = userRepo.findByEmail(email);
 
         if(existingUser.isPresent()){
-            log.warn("User already exists for {}", payload.getEmail());
+            log.warn("User already exists for {}", email);
             throw new UserAlreadyExistsException("User Already Exists!");
         }
 
         String hashedPw = passwordUtil.hashPassword(payload.getPassword());
 
         User newUser = new User();
-        newUser.setEmail(payload.getEmail());
+        newUser.setEmail(email);
         newUser.setFullName(payload.getFullName());
         newUser.setTrackingPropertyIds(new ArrayList<>());
         newUser.setPassword(hashedPw);
