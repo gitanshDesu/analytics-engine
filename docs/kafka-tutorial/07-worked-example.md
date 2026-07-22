@@ -1,6 +1,6 @@
-# Module 5 — Worked Example: Order Placed Events
+# Module 7 — Worked Example: Order Placed Events
 
-A small, disposable example — separate from `analytics-backend` — so mistakes here are cheap. Scenario: an `OrderPlacedEvent { orderId, customerId, amount }`, keyed by `customerId` so one customer's orders stay ordered.
+Assumes a broker running per Module 1 at `localhost:9092`. A small, disposable example — separate from `analytics-backend` — so mistakes here are cheap. Scenario: an `OrderPlacedEvent { orderId, customerId, amount }`, keyed by `customerId` so one customer's orders stay ordered.
 
 ## Step 1 — Raw `kafka-clients`, no Spring
 
@@ -92,10 +92,13 @@ spring.kafka.producer.properties.enable.idempotence=true
 spring.kafka.consumer.group-id=order-consumer-group
 spring.kafka.consumer.auto-offset-reset=earliest
 spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
-spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer
+spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+spring.kafka.consumer.properties.spring.deserializer.value.delegate.class=org.springframework.kafka.support.serializer.JsonDeserializer
 spring.kafka.consumer.properties.spring.json.trusted.packages=com.example.orders.dto
 spring.kafka.listener.ack-mode=manual_immediate
 ```
+
+Note the `value-deserializer` here is `ErrorHandlingDeserializer`, not `JsonDeserializer` directly, with the real deserializer pushed into `spring.deserializer.value.delegate.class`. This is what makes Step 3's DLT demo actually work — see Module 5's "Deserialization error handling" section for why a plain `JsonDeserializer` plus an error-handler bean alone isn't sufficient for deserialization failures specifically (as opposed to failures thrown by your listener method's business logic, which the plain setup does handle fine).
 
 **Producer (a REST controller):**
 
@@ -138,7 +141,7 @@ Compare this to Step 1: `KafkaTemplate.send()` replaces the manual `KafkaProduce
 
 ## Step 3 — Break it, then fix it with a DLT
 
-**Break it deliberately:** send a malformed payload directly with a raw producer (bypassing the controller's validation), e.g. publish the literal string `not valid json` to the `orders` topic. Watch the consumer log a deserialization exception repeatedly, then (with default error handling) the message is skipped after retries — silently, no trace.
+**Break it deliberately:** send a malformed payload directly with a raw producer (bypassing the controller's validation), e.g. publish the literal string `not valid json` to the `orders` topic. Without the `ErrorHandlingDeserializer` wrapping shown above, this either repeatedly fails the same `poll()` call (parking on that offset, blocking the partition) or crashes the container, depending on client version — it does **not** cleanly reach a per-record error handler the way a business-logic exception thrown inside your listener method would. With the wrapping in place, the bad bytes surface as a `DeserializationException` your error handler *can* see; without it, the failure happens too early in the pipeline for `DefaultErrorHandler` to help at all.
 
 **Fix it — add a DLT-publishing error handler:**
 
@@ -151,10 +154,10 @@ public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<Object, Object> templ
 }
 ```
 
-Re-run the same broken-payload send. This time: 3 retries (with a 1s pause each), then the raw bytes + exception headers land on `orders.DLT` instead of vanishing. Consume `orders.DLT` with a throwaway consumer (or the CLI: `kafka-console-consumer --topic orders.DLT --from-beginning`) and see the failed payload sitting there, inspectable.
+Re-run the same broken-payload send. This time, because `ErrorHandlingDeserializer` (already configured above) converts the failure into a `DeserializationException` the container's error handling can act on: 3 retries (with a 1s pause each), then the raw bytes + exception headers land on `orders.DLT` instead of vanishing. Consume `orders.DLT` with a throwaway consumer (or the CLI: `kafka-console-consumer --topic orders.DLT --from-beginning`) and see the failed payload sitting there, inspectable.
 
 This is the "aha" moment worth doing hands-on rather than just reading about: the exact same failure produces two very different outcomes (silent loss vs a durable, inspectable record) depending on whether the error handler bean exists.
 
 ## What to try next
 
-Once this example works end to end, go straight to Module 6's task — it's the same shape of system (REST endpoint → producer → consumer) but with the hardening requirements (idempotence, DLT, idempotent consumer, a test) you now have to wire up yourself rather than copy from this walkthrough.
+Once this example works end to end, go straight to Module 8's task — it's the same shape of system (REST endpoint → producer → consumer) but with the hardening requirements (idempotence, DLT, idempotent consumer, a test) you now have to wire up yourself rather than copy from this walkthrough.

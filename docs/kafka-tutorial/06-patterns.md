@@ -1,4 +1,4 @@
-# Module 4 — Industry-Standard Patterns
+# Module 6 — Industry-Standard Patterns
 
 Each pattern here is introduced as the fix for a specific gap already found in `analytics-backend`'s Kafka code, so you see it land as a real fix, not abstract theory.
 
@@ -37,7 +37,42 @@ Spring auto-wires this into your `@KafkaListener` container factory once it's a 
 
 **Gotcha:** a DLT is a dead end unless something reads it. Build (even a simple, manual) tooling to inspect and, where appropriate, replay DLT messages — otherwise it's just a slightly more polite version of silently dropping data.
 
-**Comparison — alternative ways to handle poison messages:**
+### The more modern alternative: `@RetryableTopic` (non-blocking retries)
+
+The `DefaultErrorHandler` approach above retries **in place** — the consumer thread sleeps through each backoff interval, blocking that partition from making progress on *other* records while one message retries. Spring Kafka's `@RetryableTopic` annotation instead creates separate retry topics per backoff attempt and republishes the failing record to them, so the main topic's consumer keeps moving:
+
+```java
+@RetryableTopic(
+    attempts = "4",
+    backoff = @Backoff(delay = 1000, multiplier = 2.0, maxDelay = 10_000),
+    autoCreateTopics = "true",
+    dltStrategy = DltStrategy.FAIL_ON_ERROR
+)
+@KafkaListener(topics = "event-topic", groupId = "event-consumer-group")
+public void consume(EventRequest request) {
+    // same processing logic as before
+}
+
+@DltHandler
+public void handleDlt(EventRequest request, @Header(KafkaHeaders.EXCEPTION_MESSAGE) String exceptionMessage) {
+    log.error("event-topic.DLT: {} — {}", request, exceptionMessage);
+}
+```
+
+Behind the scenes this creates `event-topic-retry-0`, `event-topic-retry-1`, etc. (one per attempt, each with its own backoff-driven delay) and finally `event-topic-dlt` — the failing record hops across these topics rather than blocking the original partition's consumer thread during backoff.
+
+**Comparison — `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` vs `@RetryableTopic`:**
+
+| | `DefaultErrorHandler` (blocking retry) | `@RetryableTopic` (non-blocking retry) |
+|---|---|---|
+| Retry mechanism | Consumer thread sleeps through backoff, blocking the partition | Failing record republished to separate retry topics; main partition keeps consuming other records |
+| Setup | One error-handler bean, applies cluster-wide to all listeners using that container factory | Per-listener annotation, more granular control per topic |
+| Extra topics created | None | One per retry attempt + one DLT, more topics to manage/monitor |
+| Best for | Simple cases, low retry volume, or when blocking briefly is acceptable | High-throughput topics where one poison message shouldn't stall the whole partition during retries |
+
+For `EventConsumer` specifically — a high-volume analytics ingestion topic — `@RetryableTopic` is the better fit precisely because you don't want one bad session-not-found event to stall other sessions' events sitting behind it in the same partition during backoff.
+
+**Retryable vs non-retryable errors — decide per exception type:**
 
 | Approach | Pros | Cons |
 |---|---|---|
@@ -48,7 +83,7 @@ Spring auto-wires this into your `@KafkaListener` container factory once it's a 
 
 ## 2. Idempotent consumers
 
-**The problem it solves:** at-least-once delivery (the realistic default once you fix offset-commit timing, see Module 3's ack-mode discussion) means the *same* message can be delivered and processed more than once — after a rebalance, a retry, or a consumer restart between "processed" and "committed." `EventConsumer`'s `mongoTemplate.findAndModify(... .inc("eventCount", 1) ...)` is **not** idempotent: reprocessing the same event increments the counter again.
+**The problem it solves:** at-least-once delivery (the realistic default once you fix offset-commit timing, see Module 5's ack-mode discussion) means the *same* message can be delivered and processed more than once — after a rebalance, a retry, or a consumer restart between "processed" and "committed." `EventConsumer`'s `mongoTemplate.findAndModify(... .inc("eventCount", 1) ...)` is **not** idempotent: reprocessing the same event increments the counter again.
 
 **Two ways to make it idempotent:**
 
@@ -74,6 +109,7 @@ For `EventConsumer` specifically: since every event probably already has (or can
 | Combine into one write | Model `Session` and `Event` so a single atomic operation covers both (e.g. store recent event summary embedded, or derive counters via aggregation instead of maintaining them at all) | Removes the two-write problem entirely | Requires a data-model rethink; not always feasible |
 | Transactional outbox pattern | Producer side: instead of writing directly to two systems, write an "outbox" record in the *same* local transaction as your primary DB write, then a separate relay process publishes outbox rows to Kafka | Solves the general "DB write + Kafka publish must be atomic" problem *at the producer* | Adds a relay component (e.g. Debezium reading the outbox table's WAL/oplog) — real infrastructure, not a quick fix |
 | Kafka transactions (`read_committed` + transactional producer) | Atomic multi-topic/multi-partition Kafka writes, consumer-side isolation level to only see committed records | Solves Kafka-to-Kafka atomicity precisely | Does **not** cover Kafka-to-external-system (Mongo) atomicity at all — a common misconception; only relevant for consume-transform-produce pipelines entirely within Kafka |
+| `ChainedKafkaTransactionManager` (Module 5) | Coordinates a Kafka transaction and a DB transaction manager to commit/rollback together | Less infrastructure than outbox; easy to wire up if both transaction managers already exist | Best-effort sequential commit, not true two-phase commit — a small inconsistency window remains, so not appropriate where correctness must be absolute |
 
 For your case specifically (single consumer, single external DB), the pragmatic fix is the **Mongo transaction** wrapping both writes, combined with **idempotent consumer logic** (previous section) — that combination gets you "processed exactly-once from the application's point of view" without needing outbox infrastructure. Reach for the outbox pattern only once you have a producer-side atomicity problem (i.e., the thing that writes to Mongo and *also* needs to publish to Kafka atomically, which is the reverse direction from your current consumer-side problem).
 
@@ -81,7 +117,7 @@ For your case specifically (single consumer, single external DB), the pragmatic 
 
 A transactional producer can atomically write to multiple partitions/topics, and a consumer set to `isolation.level=read_committed` only sees committed records. This is what powers Kafka Streams' exactly-once processing for consume-transform-produce pipelines entirely inside Kafka.
 
-**Gotcha (repeat from Module 1, worth over-learning because it's the top interview trap):** this exactly-once guarantee is scoped to Kafka-to-Kafka. It gives you nothing for "consumed a Kafka record and also wrote to Mongo" — that boundary always needs either an idempotent consumer or an outbox-style pattern, never Kafka transactions alone.
+**Gotcha (repeat from Module 2, worth over-learning because it's the top interview trap):** this exactly-once guarantee is scoped to Kafka-to-Kafka. It gives you nothing for "consumed a Kafka record and also wrote to Mongo" — that boundary always needs either an idempotent consumer or an outbox-style pattern, never Kafka transactions alone.
 
 ## 5. Consumer lag monitoring
 
@@ -112,7 +148,64 @@ You have `spring-boot-starter-kafka-test` declared as a dependency with **zero t
 
 Not a change to make now — raw JSON is a reasonable choice for a single-service pipeline you fully control — but know this exists and why larger organizations reach for it once more than one team touches the same topic.
 
-## 8. Security (brief)
+## 8. Message size limits and the exception catalog you'll actually hit
+
+Kafka enforces size limits at multiple points, and hitting one produces a specific, distinctly-named exception — worth recognizing by name rather than treating every failure as generic:
+
+| Config | Where enforced | What happens if exceeded |
+|---|---|---|
+| `max.request.size` (producer) | Client-side, before sending | Producer throws `RecordTooLargeException` immediately, nothing sent over the wire |
+| `message.max.bytes` (broker, topic-level `max.message.bytes`) | Broker, on receipt | Broker rejects the produce request even if the client's own limit was higher |
+| `fetch.max.bytes` / `max.partition.fetch.bytes` (consumer) | Client-side, on fetch | Consumer may fail to fetch a message larger than its own configured max, even though the broker accepted it — a common "producer and consumer configured inconsistently" bug |
+
+**Common exceptions you'll actually see in logs, and what they mean:**
+
+| Exception | Typical cause |
+|---|---|
+| `RecordTooLargeException` | Message exceeds `max.request.size` (producer) or a fetch-side size limit (consumer) |
+| `TimeoutException` | Broker unreachable, or request took longer than `request.timeout.ms`/`delivery.timeout.ms` |
+| `SerializationException` | Producer's serializer couldn't convert the object (e.g. Jackson failure on a non-serializable field) |
+| `NotLeaderOrFollowerException` | Client's cached metadata about who leads a partition is stale (e.g. right after a leader election) — usually transient, client refreshes metadata and retries |
+| `RebalanceInProgressException` | An operation (like a commit) was attempted while a rebalance is actively happening — retry after it settles |
+| `CommitFailedException` | `commitSync()` called too late — the consumer was already kicked from the group (commonly because `max.poll.interval.ms` was exceeded), so the commit is rejected |
+| `DeserializationException` (Spring Kafka specific) | Surfaced by `ErrorHandlingDeserializer` (Module 5) when the wrapped deserializer fails — this is the one your DLT recoverer is specifically built to catch |
+
+**Gotcha:** `RecordTooLargeException` from the producer and a *silent* fetch failure from a misconfigured consumer are different failure modes for the same root cause (a message that's "too big" relative to *someone's* limit) — always keep `max.request.size` (producer), `message.max.bytes`/`max.message.bytes` (broker/topic), and `fetch.max.bytes`/`max.partition.fetch.bytes` (consumer) consistent with each other, not just individually "big enough."
+
+## 9. Distributed tracing and correlation across the pipeline
+
+Once a request flows through REST → Kafka → consumer → DB, a plain request-scoped trace ID doesn't automatically follow it — Kafka is a genuine process/thread boundary, and the async gap between produce and consume means there's no shared thread-local context to ride along on.
+
+The standard fix: propagate a correlation/trace id via **Kafka record headers**, not the payload itself (headers keep tracing metadata separate from your actual event schema):
+
+```java
+ProducerRecord<String, EventRequest> record = new ProducerRecord<>("event-topic", request.getSessionId(), request);
+record.headers().add("traceId", currentTraceId().getBytes(StandardCharsets.UTF_8));
+kafkaTemplate.send(record);
+```
+
+```java
+@KafkaListener(topics = "event-topic", groupId = "event-consumer-group")
+public void consume(EventRequest request, @Header("traceId") String traceId) {
+    MDC.put("traceId", traceId); // so log lines in this method carry the same trace id as the producing request
+    ...
+}
+```
+
+In practice, if you're already using Micrometer Tracing (Spring Boot's tracing abstraction) with a Kafka-aware instrumentation, this header propagation happens automatically — worth knowing the manual mechanism exists because it's exactly what the automatic instrumentation is doing for you, and you'll need to do it by hand for any custom correlation id that isn't a full tracing span (e.g. propagating your own `sessionId` or a business-level request id into consumer log lines via MDC, which is cheap and valuable even without full distributed tracing set up).
+
+## 10. Topic design: one topic with a type field vs one topic per event type
+
+`EventConsumer`'s `event-topic` carries every kind of event (`PAGE_VIEW`, and presumably others) distinguished by an `eventType` field inside a single `EventRequest` schema — worth recognizing this as a deliberate design point with real alternatives, not just "how it happened to be built":
+
+| Approach | Pros | Cons |
+|---|---|---|
+| Single topic + type field (current) | One topic to provision/monitor; consumers needing "all events for a session" get them in one ordered stream (partitioned by `sessionId`) | Every consumer of the topic must handle every event type (or filter them out); schema is a superset union of all event types' fields; one noisy event type can crowd out others in the same partitions |
+| One topic per event type | Each topic has a focused, simple schema; consumers only subscribe to the types they care about; independent partition/retention tuning per type | Losing the single-stream-per-session ordering guarantee across types (a `PAGE_VIEW` and a later `CLICK` for the same session are now in different topics, and inter-topic ordering isn't guaranteed even with the same key); more topics to provision and monitor |
+
+There's no universally correct answer — it hinges on whether consumers typically want "everything for this session, in order" (favors single-topic) or "just this one kind of event, wherever it comes from" (favors per-type topics). Worth being able to articulate this tradeoff explicitly if asked why `EventConsumer` is built the way it is, rather than treating it as an unexamined default.
+
+## 11. Security (brief)
 
 - **Encryption in transit:** SSL/TLS between clients and brokers.
 - **Authentication:** SASL (PLAIN, SCRAM, Kerberos/GSSAPI, OAUTHBEARER).
@@ -128,3 +221,7 @@ Not a change to make now — raw JSON is a reasonable choice for a single-servic
 5. **"What's consumer lag and why does it matter?"** — Offset gap between latest and committed; the primary signal that consumers can't keep up.
 6. **"`EmbeddedKafka` vs Testcontainers — when would you pick each?"** — Embedded for fast, everyday integration tests; Testcontainers when you need behavior closer to a real broker or are testing broker-version-specific features.
 7. **"Why might you introduce a Schema Registry instead of raw JSON?"** — Enforced compatibility across independently-deployed producers/consumers, smaller payloads; overkill for a single team owning both ends.
+8. **"What's the difference between `DefaultErrorHandler` retries and `@RetryableTopic`?"** — Blocking in-place retry (pauses the partition during backoff) vs non-blocking retry via separate per-attempt retry topics (the partition keeps moving for other records).
+9. **"What does `RecordTooLargeException` tell you, and where could the actual limit be coming from?"** — Message exceeds a size limit; could be the producer's own `max.request.size`, the broker/topic's `message.max.bytes`, or a mismatched consumer-side fetch limit — the three need to be kept consistent, not just individually large.
+10. **"Why can't you rely on thread-local trace context to propagate across a Kafka produce/consume boundary?"** — Kafka is a genuine process and thread boundary with an async gap; correlation ids must be explicitly carried in record headers (or via tracing instrumentation that does this for you), not implicitly inherited.
+11. **"Single topic with a type field, or one topic per event type — how do you decide?"** — Whether consumers need cross-type ordering for the same entity (favors single topic) vs only ever want one event type regardless of source (favors per-type topics).

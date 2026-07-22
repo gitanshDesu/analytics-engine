@@ -1,6 +1,6 @@
-# Module 6 — Hands-On Integration Task
+# Module 8 — Hands-On Integration Task
 
-This is new code you write yourself — not a copy of Module 5's example. The point is to make the decisions (partition count, key choice, acks, error handling, idempotency, a test) without a template to lean on, since that's what an interview or a real ticket will ask of you.
+Uses the same local broker from Module 1. This is new code you write yourself — not a copy of Module 7's example. The point is to make the decisions (partition count, key choice, acks, error handling, idempotency, a test) without a template to lean on, since that's what an interview or a real ticket will ask of you.
 
 ## The task: a notifications service
 
@@ -12,8 +12,8 @@ Build a small two-part system:
 ## Requirements you must satisfy (this is where the learning happens — don't skip any)
 
 1. **Topic config:** create the `notifications` topic with 3 partitions. Choose the partition key yourself and be ready to justify it — what should stay ordered relative to what? (Hint: think about whether two notifications to the *same* user need to arrive/process in send order, and pick the key accordingly — same reasoning `EventController` applied by keying on `sessionId`.)
-2. **Producer durability:** explicitly set `acks=all` and `enable.idempotence=true` on the producer, and write a one-line comment next to the config justifying the choice versus the defaults — connect it back to what you'd lose by not setting them (Module 3).
-3. **Error handling:** wire up a `DefaultErrorHandler` with a bounded backoff (e.g. 3 retries, exponential) and a `DeadLetterPublishingRecoverer`, so the simulated 10% failures end up on `notifications.DLT` after retries are exhausted instead of vanishing. Write a small separate consumer (or a test) that reads `notifications.DLT` and prints what landed there, so you've verified the whole path, not just assumed it works.
+2. **Producer durability:** explicitly set `acks=all` and `enable.idempotence=true` on the producer, and write a one-line comment next to the config justifying the choice versus the defaults — connect it back to what you'd lose by not setting them (Module 5).
+3. **Error handling:** wire up either a `DefaultErrorHandler` with a bounded backoff (e.g. 3 retries, exponential) and a `DeadLetterPublishingRecoverer`, or the `@RetryableTopic` annotation (Module 6) — your choice, but be ready to justify it — so the simulated 10% failures end up on a DLT after retries are exhausted instead of vanishing. Also wrap your `value-deserializer` in `ErrorHandlingDeserializer` (Module 5) and prove it works by publishing one deliberately malformed (non-JSON) message directly with a raw producer — confirm it lands on the DLT too, not just the simulated business-logic failures. Write a small separate consumer (or a test) that reads the DLT and prints what landed there, so you've verified the whole path, not just assumed it works.
 4. **Idempotent consumption:** generate a stable notification id (client- or server-side, your choice, but be consistent) and make the "send" operation idempotent against redelivery — e.g. an upsert keyed by that id, or a dedupe-check before sending. Prove to yourself it works: manually redeliver the same message twice (e.g. reset the consumer group's offset backward and let it reprocess) and confirm the side effect doesn't double up.
 5. **One test:** write an `@EmbeddedKafka` integration test that posts to `/notifications` via `MockMvc`/`WebTestClient`, and asserts a message with the expected key/payload actually lands on the `notifications` topic. Bonus: a second test that publishes a malformed message directly and asserts it ends up on `notifications.DLT`.
 
@@ -31,5 +31,6 @@ Once the above works, go fix the same four gaps in `analytics-backend`'s actual 
 2. Stop discarding `kafkaTemplate.send()`'s return value in `EventController` — attach a callback that at least logs failures.
 3. Make the session `eventCount`/`pageViews` update idempotent against redelivery, or wrap the `Session` update and `Event` insert in a single Mongo transaction (or both).
 4. Scope `spring.kafka.consumer.properties.spring.json.trusted.packages` down from `*` to the actual DTO package.
+5. Wrap `EventConsumer`'s `value-deserializer` in `ErrorHandlingDeserializer` (Module 5) so the DLT setup from item 1 actually catches malformed messages, not just business-logic exceptions.
 
 This is genuinely useful work, not just practice — these are the concrete gaps already identified in this project's Kafka integration.

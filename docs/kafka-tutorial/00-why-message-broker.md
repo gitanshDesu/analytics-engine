@@ -40,7 +40,7 @@ Put a broker in the middle: checkout publishes one `OrderPlaced` event and retur
 This is the distinction beginners conflate most: **Kafka does not delete a message when it's consumed.** A message sits in the partition log until retention expires it, regardless of how many consumers have read it or how many times. Consuming is just moving *your* offset pointer forward — it never mutates the log.
 
 ### Gotcha
-If you come from RabbitMQ/SQS, you'll instinctively look for "ack this message" / "requeue on nack" semantics. Kafka has no such thing at the message level — you only ever move an offset forward (per partition, per consumer group). There's no way to selectively "fail" one message from a batch and have Kafka retry only that one automatically; retry/DLT logic in Kafka is something *you* build in the consumer (see Module 4), not something the broker does for you.
+If you come from RabbitMQ/SQS, you'll instinctively look for "ack this message" / "requeue on nack" semantics. Kafka has no such thing at the message level — you only ever move an offset forward (per partition, per consumer group). There's no way to selectively "fail" one message from a batch and have Kafka retry only that one automatically; retry/DLT logic in Kafka is something *you* build in the consumer (see Module 6), not something the broker does for you.
 
 ## Kafka vs the alternatives — comparison
 
@@ -66,9 +66,35 @@ If you come from RabbitMQ/SQS, you'll instinctively look for "ack this message" 
 - You need strict, global (not per-key) FIFO ordering across the entire topic — Kafka only orders within a partition; a single-partition topic gives you global order but throws away parallelism
 - You need synchronous request/reply — Kafka is fundamentally async; layering request/reply on top (reply-to topics + correlation ids) is possible but is fighting the tool
 
+## Event streaming: a distinct paradigm, not just "a faster queue"
+
+Everything above frames Kafka as a message broker with better properties than a queue. That's true but incomplete — Kafka is also the base for a different way of architecting systems entirely: **event streaming**, where the log itself is treated as a durable record of everything that happened, not just a transport mechanism to get a message from A to B.
+
+**Three ways an event can carry information, and why the distinction matters:**
+
+| Style | What's in the event | Example | Consumer needs to... |
+|---|---|---|---|
+| Event notification | Just enough to say "something happened" (often just an id) | `{ orderId: "o-1" }` | Call back to the source service to get details |
+| Event-carried state transfer | The full relevant state at the time of the event | `{ orderId: "o-1", customerId, items, total, status }` | Nothing else — everything needed is in the event |
+| Event sourcing | The event *is* the source of truth; current state is derived by replaying all events for an entity | A sequence of `OrderCreated`, `ItemAdded`, `OrderPaid`, `OrderShipped` events, no separate "orders" table at all | Replay/fold the event history to reconstruct state |
+
+Your `EventConsumer`/`Event` model is closest to event-carried state transfer — each `Event` document carries enough (`eventType`, `payload`, `pagePath`, etc.) that nothing needs to be fetched back from the frontend to make sense of it. Recognizing which style you're using (often implicitly) matters because it determines coupling: notification-style events keep payloads small but re-couple consumers back to the producer's API; state-transfer events decouple fully but risk staleness if the embedded state doesn't include everything a later consumer turns out to need.
+
+**CQRS (Command Query Responsibility Segregation)** is the architectural pattern this often pairs with: writes go through one model (commands, producing events), reads are served from a separately-optimized model built by consuming those events — e.g. your `Session`/`Event` collections being the "write side," with a future analytics dashboard reading from a purpose-built aggregate collection kept up to date by a Kafka consumer, rather than querying the write-side collections directly under load.
+
+**Change Data Capture (CDC)** is the event-streaming pattern for turning an existing database's changes into a stream without touching application code — a tool like Debezium tails a database's transaction log (MySQL binlog, Postgres WAL, Mongo oplog) and publishes each row-level change as a Kafka event. This is the standard way to bridge "a system that wasn't built with Kafka in mind" into an event-streaming architecture, and it's also the usual implementation mechanism behind the transactional outbox pattern (Module 6) — the outbox table is written normally, and CDC is what actually gets outbox rows into Kafka without a custom relay process.
+
+**The mental shift, in one sentence:** a message queue asks "how do I get this message from A to B reliably," while event streaming asks "what is the durable, replayable history of everything that happened in this system, and what can be built by reading that history" — Kafka Streams/ksqlDB (Module 4) exist specifically to let you build materialized views and derived state *from* that history, which is a fundamentally different mental model than "process a message and discard it."
+
+### Gotcha
+Don't over-apply event sourcing everywhere just because Kafka makes it possible — replaying an entire event history to reconstruct current state is powerful but adds real complexity (schema evolution across years of historical events, snapshotting for performance, harder ad-hoc querying). Most systems, including this one, get most of the benefit from plain event-carried-state-transfer messages plus a normal database for current state — reach for full event sourcing only when audit/replay of *why* state changed (not just *what* it is now) is a real requirement.
+
 ## Interview questions for this module
 
 1. **"What is Kafka and why would you use it over a REST call?"** — Answer in terms of decoupling, backpressure, and replay; don't just say "it's a message queue."
 2. **"How is Kafka different from RabbitMQ?"** — Log-based, replayable, offset-tracked-by-consumer vs smart-broker, routing-rich, message-deleted-on-ack. Expect this in almost every Kafka interview.
 3. **"When would you NOT use Kafka?"** — Shows you understand tradeoffs, not just the sales pitch. Mention operational overhead and cases where a simple queue suffices.
 4. **"Does Kafka delete a message once it's been consumed?"** — No; a very common gotcha question to filter out surface-level knowledge.
+5. **"What's the difference between event notification, event-carried state transfer, and event sourcing?"** — How much information rides in the event itself, ranging from "just an id" to "full state" to "the event is the only source of truth, state is derived by replay."
+6. **"What's CQRS and how does it relate to Kafka?"** — Separate write and read models; Kafka is the common mechanism for keeping a read-optimized model in sync with the write model's events.
+7. **"What's Change Data Capture and why would you use it instead of writing to Kafka directly in application code?"** — Tails a database's transaction log (Debezium-style) to turn existing writes into a Kafka stream with zero application code changes; also the usual engine behind the transactional outbox pattern.

@@ -1,4 +1,4 @@
-# Module 1 — Core Concepts
+# Module 2 — Core Concepts
 
 Read this module top to bottom once — each concept depends on the previous one.
 
@@ -12,7 +12,7 @@ A **broker** is one Kafka server process: it stores data (as log segments on dis
 
 A named, typed stream of events — conceptually like a table name, or a "channel." Producers write to a topic; consumers read from a topic. Topics are the unit of access control and retention configuration.
 
-**Gotcha:** topics can be auto-created on first produce if `auto.create.topics.enable=true` on the broker (often true in dev images, **false** in most managed/prod clusters). Relying on auto-creation means you get default partition count/replication factor, not what you intended — always explicitly declare topics (see Module 3, `NewTopic`/`KafkaAdmin`) in real projects.
+**Gotcha:** topics can be auto-created on first produce if `auto.create.topics.enable=true` on the broker (often true in dev images, **false** in most managed/prod clusters). Relying on auto-creation means you get default partition count/replication factor, not what you intended — always explicitly declare topics (see Module 5, `NewTopic`/`KafkaAdmin`) in real projects.
 
 ## 3. Partition
 
@@ -64,7 +64,7 @@ A **consumer group** is a named set of consumer instances that split the work of
 | Each message delivered to | Exactly one consumer instance in the group | Every group independently |
 | Use case | Scale out processing of one workload | Multiple independent services each need their own full view (e.g. billing service and analytics service both read `OrderPlaced`) |
 
-**Gotcha:** if you have more consumer instances in a group than partitions, the extras sit **idle** — partitions can't be split further. Consumer parallelism is capped by partition count, full stop. This is also why `spring.kafka.listener.concurrency` (Module 3) should not exceed your topic's partition count.
+**Gotcha:** if you have more consumer instances in a group than partitions, the extras sit **idle** — partitions can't be split further. Consumer parallelism is capped by partition count, full stop. This is also why `spring.kafka.listener.concurrency` (Module 5) should not exceed your topic's partition count.
 
 ## 8. Rebalancing
 
@@ -73,7 +73,7 @@ When a consumer joins or leaves a group (crash, deploy, scale event), the group'
 - **Eager rebalancing** (older default): **all** consumers in the group stop processing, give up all partitions, then get reassigned — a "stop the world" pause across the whole group, even for partitions that didn't need to move.
 - **Cooperative sticky rebalancing** (`CooperativeStickyAssignor`, newer, recommended): only the partitions that actually need to move are revoked; unaffected consumers keep processing uninterrupted. Much smaller blast radius.
 
-**Gotcha:** rebalances are a common source of production hiccups — a rolling deploy of N consumer instances can trigger N rebalances, each briefly pausing the whole group under the eager strategy. If you deploy consumers frequently, prefer the cooperative sticky assignor. Also: a consumer that takes too long between `poll()` calls (see `max.poll.interval.ms` in Module 3) is presumed dead and gets kicked out, *triggering* an unwanted rebalance — this is the #1 cause of "phantom" rebalances in production, usually from slow message processing, not actual crashes.
+**Gotcha:** rebalances are a common source of production hiccups — a rolling deploy of N consumer instances can trigger N rebalances, each briefly pausing the whole group under the eager strategy. If you deploy consumers frequently, prefer the cooperative sticky assignor. Also: a consumer that takes too long between `poll()` calls (see `max.poll.interval.ms` in Module 5) is presumed dead and gets kicked out, *triggering* an unwanted rebalance — this is the #1 cause of "phantom" rebalances in production, usually from slow message processing, not actual crashes.
 
 ## 9. Replication
 
@@ -107,7 +107,7 @@ The big one, and the thing your `EventConsumer` review flagged as an undecided g
 | At-least-once | Message never lost, but may be delivered/processed more than once | Commit offset **after** successful processing; producer retries + `acks=all` |
 | Exactly-once | Message processed effectively once, no loss, no duplicate side effects | Idempotent producer + transactions (producer→broker "exactly once" for the write itself) **plus** an idempotent consumer or a Kafka Streams/transactional consume-transform-produce pipeline |
 
-**Gotcha:** "exactly-once" in Kafka's own transaction feature covers **Kafka-to-Kafka** exactly-once (e.g. Kafka Streams reading a topic and writing to another topic transactionally). It does **not** automatically give you exactly-once for an external side effect like a Mongo write — that always requires *your* consumer logic to be idempotent (dedupe by an id, or make the operation naturally idempotent like an upsert), because you can't wrap "commit Kafka offset" and "commit a Mongo document" in one atomic transaction unless you use patterns like transactional outbox (Module 4). This is precisely the gap in `EventConsumer.consume()` — auto-commit + a non-idempotent `$inc` on `eventCount` means a redelivered message double-counts.
+**Gotcha:** "exactly-once" in Kafka's own transaction feature covers **Kafka-to-Kafka** exactly-once (e.g. Kafka Streams reading a topic and writing to another topic transactionally). It does **not** automatically give you exactly-once for an external side effect like a Mongo write — that always requires *your* consumer logic to be idempotent (dedupe by an id, or make the operation naturally idempotent like an upsert), because you can't wrap "commit Kafka offset" and "commit a Mongo document" in one atomic transaction unless you use patterns like transactional outbox (Module 6). This is precisely the gap in `EventConsumer.consume()` — auto-commit + a non-idempotent `$inc` on `eventCount` means a redelivered message double-counts.
 
 ## 12. ZooKeeper vs KRaft
 
