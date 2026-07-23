@@ -6,6 +6,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,9 +23,11 @@ public class TokenService {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    @Getter
     @Value("${jwt.access-token-expiry-ms}")
     private long accessTokenExpiryMs;
 
+    @Getter
     @Value("${jwt.refresh-token-expiry-ms}")
     private long refreshTokenExpiryMs;
 
@@ -68,14 +71,6 @@ public class TokenService {
 
     public String extractEmail(String token) {
         return parseClaims(token).get("email", String.class);
-    }
-
-    public long getRefreshTokenExpiryMs() {
-        return refreshTokenExpiryMs;
-    }
-
-    public long getAccessTokenExpiryMs() {
-        return accessTokenExpiryMs;
     }
 
     private Claims parseClaims(String token) {
