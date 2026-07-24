@@ -14,6 +14,7 @@ public class EventsResponse {
     private List<DeviceBreakdown> eventTypeBreakdown;
     private List<DeviceBreakdown> topLinkClicks;
     private List<DeviceBreakdown> topButtonClicks;
+    private List<DeviceBreakdown> topElementClicks;
     private List<DeviceBreakdown> topFormSubmits;
     private List<DeviceBreakdown> scrollDepthBreakdown;
 }

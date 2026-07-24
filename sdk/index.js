@@ -42,6 +42,7 @@
     PAGE_VIEW: 'PAGE_VIEW',
     BUTTON_CLICK: 'BUTTON_CLICK',
     LINK_CLICK: 'LINK_CLICK',
+    ELEMENT_CLICK: 'ELEMENT_CLICK',
     SCROLL: 'SCROLL',
     FORM_SUBMIT: 'FORM_SUBMIT',
   };
@@ -303,22 +304,100 @@
   const firePageView = () => track(EventType.PAGE_VIEW, {});
 
   // ==== autocapture: clicks ================================================
-  // Full autocapture by default. Clicks are only classified into LINK_CLICK/BUTTON_CLICK
-  // for semantically interactive elements (links, buttons, submits, role=button) —
-  // clicks on plain divs/spans are not tracked, since the fixed backend EventType enum
-  // has no generic "click" bucket to put them in.
+  // Full autocapture by default. Links get LINK_CLICK; real interactive controls (button,
+  // [type=submit], [role=button]) get BUTTON_CLICK; everything else matched by the selector
+  // below (div, p) — i.e. clicks on non-interactive containers/text — gets ELEMENT_CLICK.
+
+  const LABEL_MAX_LENGTH = 200;
+  // detail holds a whole composite element's content (e.g. a fare card's class + code +
+  // price), not just one label, so it gets a taller cap than `text`.
+  const DETAIL_MAX_LENGTH = 500;
+
+  // Visual-only markup that shouldn't leak into a label: icons (SVG or icon-font ligature
+  // text like Material Icons' "star"), and anything explicitly hidden from assistive tech.
+  const ICON_STRIP_SELECTOR =
+    'svg, [aria-hidden="true"], script, style, .material-icons, [class*="fa-"], [class^="icon-"]';
+
+  /** @param {string} text */
+  const collapseWhitespace = (text) => text.replace(/\s+/g, ' ').trim();
 
   /**
-   * Best-effort visible label for a clicked element. `<input type="submit">`/`<input
-   * type="button">` never have textContent — their label lives in the `value` attribute
-   * instead — so a plain `.textContent` read silently produces an empty string for those.
-   * Checked in order: `value` (submit/button inputs), then `textContent` (regular
-   * buttons/links), then `aria-label` (icon-only controls with no visible text at all).
+   * @param {string} text
+   * @param {number} maxLength
+   */
+  const truncate = (text, maxLength) =>
+    text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+
+  /** @param {string} text */
+  const truncateLabel = (text) => truncate(text, LABEL_MAX_LENGTH);
+
+  /**
+   * Direct text-node children only — skips text contributed by nested elements (icons,
+   * child buttons, sibling content) so a click on one part of a composite element doesn't
+   * pull in its neighbors' text.
    * @param {Element} el
    * @returns {string}
    */
-  const getElementLabel = (el) =>
-    (el.value || el.textContent.trim() || el.getAttribute('aria-label') || '').slice(0, 200);
+  const getOwnText = (el) => {
+    let text = '';
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) text += node.textContent;
+    }
+    return collapseWhitespace(text);
+  };
+
+  /**
+   * Full subtree text with icon/decoration markup stripped first. Used only as a last
+   * resort, when no element between the click target and the tracked boundary has any
+   * own text (e.g. a pure layout wrapper div whose text all lives in nested elements).
+   * @param {Element} el
+   * @returns {string}
+   */
+  const getCleanedSubtreeText = (el) => {
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll(ICON_STRIP_SELECTOR).forEach((n) => n.remove());
+    return collapseWhitespace(clone.textContent);
+  };
+
+  /**
+   * Best-effort visible label for a click, scoped to what was actually clicked rather than
+   * the whole matched element's subtree. Checked in order:
+   *  1. `value` — `<input type="submit"|"button">` never has textContent; its label lives
+   *     in `value` instead.
+   *  2. Own text of `target`, then each ancestor up to (and including) `boundary` — stops
+   *     at the first level that has any direct text, so clicking "Save" inside a card div
+   *     returns "Save", not the whole card's concatenated content.
+   *  3. `boundary`'s full text with icon markup stripped — only reached when no level in
+   *     the chain has own text at all (a pure layout wrapper).
+   *  4. `aria-label` — icon-only controls with no visible text anywhere.
+   * @param {Element} target - `e.target`, where the click actually landed.
+   * @param {Element} boundary - the `closest()`-matched element the event is tracked against.
+   * @returns {string}
+   */
+  const getElementLabel = (target, boundary) => {
+    if (boundary.value) return truncateLabel(String(boundary.value));
+
+    for (let el = target; el && el !== boundary.parentElement; el = el.parentElement) {
+      const ownText = getOwnText(el);
+      if (ownText) return truncateLabel(ownText);
+    }
+
+    return truncateLabel(getCleanedSubtreeText(boundary) || boundary.getAttribute('aria-label') || '');
+  };
+
+  /**
+   * Full content of the matched element, regardless of which specific part inside it was
+   * clicked — e.g. clicking anywhere in a fare-card div (a class code, a price, the padding
+   * around them) returns the whole card's text ("3A PQWL21/WL8 ₹1780"), not just the one
+   * fragment under the pointer. This intentionally does NOT scope to `target` the way
+   * `getElementLabel` does: `text` stays a short/stable label for grouping (topElementClicks,
+   * funnel text-match), while `detail` exists specifically to capture everything inside the
+   * clicked container so a single event stays distinguishable/traceable on its own.
+   * @param {Element} boundary - the `closest()`-matched element the event is tracked against.
+   * @returns {string}
+   */
+  const getElementDetail = (boundary) =>
+    truncate(getCleanedSubtreeText(boundary) || boundary.getAttribute('aria-label') || '', DETAIL_MAX_LENGTH);
 
   /** @param {MouseEvent} e */
   const handleClick = (e) => {
@@ -328,12 +407,21 @@
     let eventType;
     let payload;
 
+    const detail = getElementDetail(interactiveTarget);
+
     if (interactiveTarget.tagName === 'A') {
       eventType = EventType.LINK_CLICK;
-      payload = { href: interactiveTarget.href, text: getElementLabel(interactiveTarget) };
-    } else {
+      payload = { href: interactiveTarget.href, text: getElementLabel(e.target, interactiveTarget), detail };
+    } else if (
+      interactiveTarget.tagName === 'BUTTON' ||
+      interactiveTarget.getAttribute('type') === 'submit' ||
+      interactiveTarget.getAttribute('role') === 'button'
+    ) {
       eventType = EventType.BUTTON_CLICK;
-      payload = { text: getElementLabel(interactiveTarget), id: interactiveTarget.id || undefined };
+      payload = { text: getElementLabel(e.target, interactiveTarget), id: interactiveTarget.id || undefined, detail };
+    } else {
+      eventType = EventType.ELEMENT_CLICK;
+      payload = { text: getElementLabel(e.target, interactiveTarget), id: interactiveTarget.id || undefined, detail };
     }
 
     track(eventType, payload);

@@ -7,6 +7,7 @@ public enum EventType {
     PAGE_VIEW,
     BUTTON_CLICK,
     LINK_CLICK,
+    ELEMENT_CLICK,
     SCROLL,
     FORM_SUBMIT,
 }

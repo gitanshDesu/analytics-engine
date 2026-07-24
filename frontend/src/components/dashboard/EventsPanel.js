@@ -7,6 +7,7 @@ const EVENT_TYPE_LABELS = {
   PAGE_VIEW: "Page views",
   BUTTON_CLICK: "Button clicks",
   LINK_CLICK: "Link clicks",
+  ELEMENT_CLICK: "Element clicks",
   SCROLL: "Scroll",
   FORM_SUBMIT: "Form submits",
 };
@@ -24,7 +25,7 @@ function EventList({ items, description }) {
   return <RankedBarList items={items} />;
 }
 
-/** Tabbed event-type / link-click / button-click / form-submit / scroll-depth breakdowns — one EventsResponse, five views. */
+/** Tabbed event-type / link-click / button-click / element-click / form-submit / scroll-depth breakdowns — one EventsResponse, six views. */
 export function EventsPanel({ events }) {
   const byType = events.eventTypeBreakdown.map((item) => ({
     label: EVENT_TYPE_LABELS[item.label] ?? item.label,
@@ -65,6 +66,16 @@ export function EventsPanel({ events }) {
             <EventList
               items={events.topButtonClicks}
               description="Clicked buttons will show up here."
+            />
+          ),
+        },
+        {
+          value: "elements",
+          label: "Element clicks",
+          content: (
+            <EventList
+              items={events.topElementClicks}
+              description="Clicked divs, paragraphs and other non-interactive elements will show up here."
             />
           ),
         },

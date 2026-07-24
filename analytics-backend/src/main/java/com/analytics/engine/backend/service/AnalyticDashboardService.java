@@ -182,7 +182,7 @@ public class AnalyticDashboardService {
         Criteria baseCriteria = Criteria.where("trackingId").is(trackingId)
                 .and("eventTime").gte(from).lte(to);
 
-        // Breakdown by event type (PAGE_VIEW, BUTTON_CLICK, LINK_CLICK, SCROLL, FORM_SUBMIT)
+        // Breakdown by event type (PAGE_VIEW, BUTTON_CLICK, LINK_CLICK, ELEMENT_CLICK, SCROLL, FORM_SUBMIT)
         List<DeviceBreakdown> eventTypeBreakdown = groupEventsByField(
                 "eventType",
                 baseCriteria,
@@ -208,6 +208,13 @@ public class AnalyticDashboardService {
                 TOP_N
         );
 
+        List<DeviceBreakdown> topElementClicks = groupEventsByField(
+                "payload.text",
+                eventCriteria(trackingId, from, to, EventType.ELEMENT_CLICK),
+                Sort.Direction.DESC,
+                TOP_N
+        );
+
         List<DeviceBreakdown> topFormSubmits = groupEventsByField(
                 "payload.action",
                 eventCriteria(trackingId, from, to, EventType.FORM_SUBMIT),
@@ -228,6 +235,7 @@ public class AnalyticDashboardService {
                 eventTypeBreakdown,
                 topLinkClicks,
                 topButtonClicks,
+                topElementClicks,
                 topFormSubmits,
                 scrollDepthBreakdown
         );
@@ -338,6 +346,7 @@ public class AnalyticDashboardService {
             case PAGE_VIEW -> "Page view";
             case BUTTON_CLICK -> "Button click";
             case LINK_CLICK -> "Link click";
+            case ELEMENT_CLICK -> "Element click";
             case FORM_SUBMIT -> "Form submit";
             case SCROLL -> "Scroll";
         };

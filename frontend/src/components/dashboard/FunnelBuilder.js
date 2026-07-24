@@ -11,6 +11,7 @@ const EVENT_TYPES = [
   { value: "PAGE_VIEW", label: "Page view" },
   { value: "BUTTON_CLICK", label: "Button click" },
   { value: "LINK_CLICK", label: "Link click" },
+  { value: "ELEMENT_CLICK", label: "Element click" },
   { value: "FORM_SUBMIT", label: "Form submit" },
   { value: "SCROLL", label: "Scroll" },
 ];
